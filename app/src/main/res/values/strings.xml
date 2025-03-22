@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">FILM LIBRARY</string>
+    <string name="title1">Welcome in Film Library</string>
+    <string name="title2">There are productions that you are tracking</string>
+</resources>

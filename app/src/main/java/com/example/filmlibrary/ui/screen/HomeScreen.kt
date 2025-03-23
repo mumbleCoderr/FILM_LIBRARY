@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -32,6 +35,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import com.example.filmlibrary.R
 import com.example.filmlibrary.data.Genre
 import com.example.filmlibrary.data.Production
+import com.example.filmlibrary.data.getProductions
 import com.example.filmlibrary.ui.theme.DarkPink
 import com.example.filmlibrary.ui.theme.DarkPurple
 import com.example.filmlibrary.ui.theme.LightPink
@@ -65,8 +71,9 @@ fun HomeScreen() {
     ) {
         Column {
             TopBar()
-            FilterChips()
             SearchBar()
+            FilterChips()
+            ProductionList(getProductions())
         }
 
     }
@@ -77,7 +84,10 @@ fun TopBar(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, 52.dp),
+            .padding(
+                start = 16.dp,
+                top = 52.dp,
+            ),
     ) {
         Text(
             text = stringResource(id = R.string.title1),
@@ -86,6 +96,7 @@ fun TopBar(modifier: Modifier = Modifier) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .padding(bottom = 8.dp)
+
         )
         Text(
             text = stringResource(id = R.string.title2),
@@ -98,42 +109,85 @@ fun TopBar(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun FilterChips(){
-    var selectedFilter by remember{
+fun <T> Chip(
+    index: Int,
+    list: List<T>,
+    selectedFilter: MutableState<Int>,
+    labelProvider: (T) -> String
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .padding(
+                start = 16.dp,
+                top = 16.dp,
+                end = if (index == list.size - 1) 16.dp else 0.dp
+            )
+            .clickable {
+                selectedFilter.value = index
+            }
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (selectedFilter.value == index) DarkPink
+                else LightPurple
+            )
+            .height(48.dp)
+            .padding(12.dp)
+    ) {
+        Text(
+            text = labelProvider(list[index]),
+            color = TextH1,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+fun FilterChips() {
+    var selectedGereFilter = remember {
         mutableStateOf(0)
+    }
+    var selectedIsWatchedFilter = remember {
+        mutableStateOf(0)
+    }
+    var selectedSorting = remember {
+        mutableStateOf(0);
     }
 
     val genres = Genre.entries
+    val context = LocalContext.current
+    val isWatchedEntries = context.resources.getStringArray(R.array.isWatched).toList()
+    val sortingEntries = context.resources.getStringArray(R.array.sorting).toList()
 
     LazyRow {
-        items(genres.size){ index ->
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .padding(
-                        start = 16.dp,
-                        top = 32.dp,
-                        bottom = 16.dp,
-                        end = if (index == genres.size - 1) 16.dp else 0.dp
-                    )
-                    .clickable {
-                        selectedFilter = index
-                    }
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        if(selectedFilter == index) DarkPink
-                        else LightPurple
-                    )
-                    .height(48.dp)
-                    .padding(12.dp)
-            ){
-                Text(
-                    text = genres[index].name,
-                    color = TextH1,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+        items(genres.size) { index ->
+            Chip(index,
+                genres,
+                selectedGereFilter,
+                { it.name }
+            )
+        }
+    }
+    LazyRow(
+        modifier = Modifier
+            .padding(start = 48.dp)
+    ) {
+        items(isWatchedEntries.size) { index ->
+            Chip(index,
+                isWatchedEntries,
+                selectedIsWatchedFilter,
+                { it }
+            )
+        }
+    }
+    LazyRow {
+        items(sortingEntries.size) { index ->
+            Chip(index,
+                sortingEntries,
+                selectedSorting,
+                { it }
+            )
         }
     }
 }
@@ -149,7 +203,6 @@ fun SearchBar() {
             .padding(
                 start = 16.dp,
                 top = 16.dp,
-                bottom = 16.dp,
                 end = 16.dp
             )
     ) {
@@ -200,89 +253,49 @@ fun SearchBar() {
 }
 
 @Composable
-fun ProductionList(){
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-fun String.limit(maxLength: Int): String {
-    return if (this.length > maxLength) this.take(maxLength) + "..." else this
-}
-
-@Composable
-fun ProductionLayout(production: Production, modifier: Modifier = Modifier) {
+fun ProductionItem(production: Production) {
     Box(
-        modifier = modifier
-            .width(350.dp)
-            .height(80.dp)
-            .clip(RoundedCornerShape(30.dp))
-            .background(Color(0xFF4A148C)),
-        Alignment.Center
+        modifier = Modifier
+            /*.height(100.dp)
+            .width(100.dp)*/
+            .background(LightPink)
+            .padding(start = 32.dp)
     ) {
-        Text(
-            text = production.title.uppercase().limit(14),
-            color = Color(0xFFefe5fd),
-            fontSize = 35.sp,
-            fontWeight = FontWeight.Bold,
-        )
+        Text("SKIBIDIBI")
     }
 }
 
 @Composable
-fun AddButton(modifier: Modifier = Modifier) {
+fun ProductionList(productions: List<Production>) {
     Box(
-        modifier = modifier
-            .width(100.dp)
-            .height(50.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(Color(0xFF4A148C)),
-        Alignment.Center
+        modifier = Modifier
+            .padding(
+                start = 16.dp,
+                top = 16.dp,
+                bottom = 16.dp
+            )
+            .fillMaxWidth()
     ) {
-        Icon(
-            imageVector = Icons.Filled.Add,
-            contentDescription = "Add",
-            modifier = Modifier.size(64.dp),
-            tint = Color(0xFFefe5fd)
-        )
-    }
-}
-
-@Composable
-fun ProductionList(productions: List<Production>, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth(),
-        contentAlignment = Alignment.Center
-    ) {
-        LazyColumn {
-            itemsIndexed(productions) { index, item ->
-                ProductionLayout(
-                    production = item,
-                    Modifier
-                        .padding(vertical = 8.dp)
-                )
-            }
-            item {
-                AddButton(
-                    Modifier
-                        .padding(vertical = 8.dp)
-                )
-            }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+        ) {
+            Text(
+                text = stringResource(id = R.string.list),
+                color = TextH1,
+                fontSize = 38.sp,
+                fontWeight = FontWeight.Bold
+            )
+            LazyVerticalGrid(
+                //TO DO
+                columns = GridCells.Adaptive(128.dp),
+                contentPadding = PaddingValues(16.dp),
+                content = {
+                    itemsIndexed(productions) { index, item ->
+                        ProductionItem(item)
+                    }
+                }
+            )
         }
     }
 }

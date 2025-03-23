@@ -9,10 +9,9 @@
         <item>NOT WATCHED</item>
     </string-array>
     <string-array name="sorting">
-        <item>NONE</item>
-        <item>A-Z</item>
-        <item>Z-A</item>
         <item>LATEST-OLDEST</item>
         <item>OLDEST-LATEST</item>
+        <item>A-Z</item>
+        <item>Z-A</item>
     </string-array>
 </resources>

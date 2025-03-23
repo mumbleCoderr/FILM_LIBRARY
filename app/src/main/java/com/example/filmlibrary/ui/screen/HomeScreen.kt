@@ -69,10 +69,55 @@ import com.example.filmlibrary.ui.theme.LightPink
 import com.example.filmlibrary.ui.theme.LightPurple
 import com.example.filmlibrary.ui.theme.TextH1
 import com.example.filmlibrary.ui.theme.TextH2
+import com.example.filmlibrary.utils.filterProductionsByGenre
+import com.example.filmlibrary.utils.filterProductionsByGenreAndWatchedStatus
+import com.example.filmlibrary.utils.filterProductionsByTitle
+import com.example.filmlibrary.utils.sortProductions
 
 @Composable
 fun HomeScreen() {
     val context = LocalContext.current
+    val productions = getProductions(context)
+    val genres = Genre.entries
+    val watchedStatusEntries = context.resources.getStringArray(R.array.isWatched).toList()
+    val sortingEntries = context.resources.getStringArray(R.array.sorting).toList()
+
+    var input by remember {
+        mutableStateOf("")
+    }
+
+    var selectedGenreFilter = remember {
+        mutableStateOf(0)
+    }
+
+    var selectedWatchedStatusFilter = remember {
+        mutableStateOf(0)
+    }
+
+    var selectedSorting = remember {
+        mutableStateOf(0);
+    }
+
+    val filteredProductionsByTitle = filterProductionsByTitle(
+        productions,
+        input,
+    )
+
+    val productionsFilteredByGenre: List<Production> = filterProductionsByGenre(
+        productions,
+        genres,
+        selectedGenreFilter,
+    )
+
+    val productionsFilteredByGenreAndWatchedStatus = filterProductionsByGenreAndWatchedStatus(
+        productionsFilteredByGenre,
+        selectedWatchedStatusFilter,
+    )
+
+    val finalFilteredSortedProductions = sortProductions(
+        productionsFilteredByGenreAndWatchedStatus,
+        selectedSorting,
+    )
 
     Column(
         modifier = Modifier
@@ -80,16 +125,24 @@ fun HomeScreen() {
             .fillMaxSize()
     ) {
         TopBar()
-        SearchBar()
-        FilterChips(context)
-        ProductionList(getProductions(context))
+        SearchBar(input, onInputChange = {input = it})
+        FilterChips(
+            genres,
+            watchedStatusEntries,
+            sortingEntries,
+            selectedGenreFilter,
+            selectedWatchedStatusFilter,
+            selectedSorting
+        )
+        if(input.isNotBlank()) ProductionList(filteredProductionsByTitle)
+        else ProductionList(finalFilteredSortedProductions)
     }
 }
 
 @Composable
-fun TopBar(modifier: Modifier = Modifier) {
+fun TopBar() {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .padding(
                 start = 16.dp,
@@ -151,26 +204,19 @@ fun <T> Chip(
 }
 
 @Composable
-fun FilterChips(context: Context) {
-    var selectedGereFilter = remember {
-        mutableStateOf(0)
-    }
-    var selectedIsWatchedFilter = remember {
-        mutableStateOf(0)
-    }
-    var selectedSorting = remember {
-        mutableStateOf(0);
-    }
-
-    val genres = Genre.entries
-    val isWatchedEntries = context.resources.getStringArray(R.array.isWatched).toList()
-    val sortingEntries = context.resources.getStringArray(R.array.sorting).toList()
-
+fun FilterChips(
+    genres: List<Genre>,
+    watchedStatusEntries: List<String>,
+    sortingEntries: List<String>,
+    selectedGenreFilter: MutableState<Int>,
+    selectedWatchedStatusFilter: MutableState<Int>,
+    selectedSorting: MutableState<Int>,
+) {
     LazyRow {
         items(genres.size) { index ->
             Chip(index,
                 genres,
-                selectedGereFilter,
+                selectedGenreFilter,
                 { it.name }
             )
         }
@@ -179,10 +225,10 @@ fun FilterChips(context: Context) {
         modifier = Modifier
             .padding(start = 48.dp)
     ) {
-        items(isWatchedEntries.size) { index ->
+        items(watchedStatusEntries.size) { index ->
             Chip(index,
-                isWatchedEntries,
-                selectedIsWatchedFilter,
+                watchedStatusEntries,
+                selectedWatchedStatusFilter,
                 { it }
             )
         }
@@ -199,11 +245,10 @@ fun FilterChips(context: Context) {
 }
 
 @Composable
-fun SearchBar() {
-    var input by remember {
-        mutableStateOf("")
-    }
-
+fun SearchBar(
+    input: String,
+    onInputChange: (String) -> Unit,
+) {
     Box(
         modifier = Modifier
             .padding(
@@ -214,7 +259,7 @@ fun SearchBar() {
     ) {
         BasicTextField(
             value = input,
-            onValueChange = { newInput -> input = newInput },
+            onValueChange = onInputChange,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(36.dp)
@@ -340,7 +385,7 @@ fun ProductionList(productions: List<Production>) {
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             contentPadding = PaddingValues(
-                bottom = 100.dp
+                bottom = 50.dp
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),

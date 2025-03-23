@@ -7,7 +7,7 @@ import java.time.LocalDate
 import java.util.Date
 
 enum class Genre {
-    DRAMA, COMEDY, ACTION, THRILLER, HORROR, DOCUMENTARY, ROMANCE, FANTASY
+    ALL, DRAMA, COMEDY, ACTION, THRILLER, HORROR, DOCUMENTARY, ROMANCE, FANTASY
 }
 
 open class Production(
@@ -17,7 +17,7 @@ open class Production(
     var isWatched: Boolean = false,
     var comment: String? = null,
     var rate: Int? = null,
-    var imageUri: Uri? = null,
+    /*var imageUri: Uri? = null,*/
 ){
     init {
         if (rate != null && (rate !in 1..10)) {
@@ -49,9 +49,9 @@ class Movie(
     isWatched: Boolean = false,
     comment: String? = null,
     rate: Int? = null,
-    imageUri: Uri? = null,
+    /*imageUri: Uri? = null,*/
     val durationInMinutes: Int
-) : Production(title, genre, releaseDate, isWatched, comment, rate, imageUri){
+) : Production(title, genre, releaseDate, isWatched, comment, rate/*, imageUri*/){
     override fun toString(): String {
         return super.toString() +
                 "duration: ${durationInMinutes/60} ${durationInMinutes%60}"
@@ -65,9 +65,9 @@ class Series(
     isWatched: Boolean = false,
     comment: String? = null,
     rate: Int? = null,
-    imageUri: Uri? = null,
+    /*imageUri: Uri? = null,*/
     val parts: Map<Int, Int>
-): Production(title, genre, releaseDate, isWatched, comment, rate, imageUri){
+): Production(title, genre, releaseDate, isWatched, comment, rate/*, imageUri*/){
     override fun toString(): String {
         return super.toString() +
                 "parts: ${parts.entries.joinToString {"${it.key}:${it.value}"}}"

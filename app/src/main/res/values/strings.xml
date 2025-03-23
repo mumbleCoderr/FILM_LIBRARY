@@ -1,5 +1,18 @@
 <resources>
     <string name="app_name">FILM LIBRARY</string>
     <string name="title1">Welcome in Film Library</string>
-    <string name="title2">There are productions that you are tracking</string>
+    <string name="title2">track your premiers and favourite ones</string>
+    <string name="list">Your repository</string>
+    <string-array name="isWatched">
+        <item>ALL</item>
+        <item>WATCHED</item>
+        <item>NOT WATCHED</item>
+    </string-array>
+    <string-array name="sorting">
+        <item>NONE</item>
+        <item>A-Z</item>
+        <item>Z-A</item>
+        <item>LATEST-OLDEST</item>
+        <item>OLDEST-LATEST</item>
+    </string-array>
 </resources>

@@ -1,5 +1,7 @@
 package com.example.filmlibrary.ui.screen
 
+import android.content.Context
+import android.hardware.lights.Light
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,12 +10,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -43,13 +49,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.filmlibrary.R
 import com.example.filmlibrary.data.Genre
 import com.example.filmlibrary.data.Production
@@ -63,19 +72,17 @@ import com.example.filmlibrary.ui.theme.TextH2
 
 @Composable
 fun HomeScreen() {
-    Box(
+    val context = LocalContext.current
+
+    Column(
         modifier = Modifier
             .background(DarkPurple)
             .fillMaxSize()
-
     ) {
-        Column {
-            TopBar()
-            SearchBar()
-            FilterChips()
-            ProductionList(getProductions())
-        }
-
+        TopBar()
+        SearchBar()
+        FilterChips(context)
+        ProductionList(getProductions(context))
     }
 }
 
@@ -144,7 +151,7 @@ fun <T> Chip(
 }
 
 @Composable
-fun FilterChips() {
+fun FilterChips(context: Context) {
     var selectedGereFilter = remember {
         mutableStateOf(0)
     }
@@ -156,7 +163,6 @@ fun FilterChips() {
     }
 
     val genres = Genre.entries
-    val context = LocalContext.current
     val isWatchedEntries = context.resources.getStringArray(R.array.isWatched).toList()
     val sortingEntries = context.resources.getStringArray(R.array.sorting).toList()
 
@@ -253,49 +259,101 @@ fun SearchBar() {
 }
 
 @Composable
-fun ProductionItem(production: Production) {
+fun ProductionItem(production: Production? = null) {
     Box(
         modifier = Modifier
-            /*.height(100.dp)
-            .width(100.dp)*/
-            .background(LightPink)
-            .padding(start = 32.dp)
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(22.dp))
+            .background(DarkPurple)
+            .fillMaxSize()
     ) {
-        Text("SKIBIDIBI")
+        if (production != null) {
+            production.imageUri?.let { imageUri ->
+                AsyncImage(
+                    model = imageUri,
+                    contentDescription = production.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black),
+                            startY = 0f
+                        )
+                    )
+            )
+            Text(
+                text = production.title.uppercase(),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextH1,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(
+                        bottom = 12.dp,
+                        start = 8.dp,
+                        end = 8.dp
+                    )
+            )
+        } else {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(
+                        width = 6.dp,
+                        color = TextH2,
+                        shape = RoundedCornerShape(22.dp)
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.AddCircleOutline,
+                    contentDescription = "Add",
+                    tint = TextH2,
+                    modifier = Modifier
+                        .size(128.dp)
+                )
+            }
+        }
     }
 }
 
 @Composable
 fun ProductionList(productions: List<Production>) {
-    Box(
+    Column(
         modifier = Modifier
-            .padding(
-                start = 16.dp,
-                top = 16.dp,
-                bottom = 16.dp
-            )
             .fillMaxWidth()
+            .padding(16.dp)
     ) {
-        Column(
+        Text(
+            text = stringResource(id = R.string.list),
+            color = TextH1,
+            fontSize = 38.sp,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier
-                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        )
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            contentPadding = PaddingValues(
+                bottom = 100.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .fillMaxHeight()
         ) {
-            Text(
-                text = stringResource(id = R.string.list),
-                color = TextH1,
-                fontSize = 38.sp,
-                fontWeight = FontWeight.Bold
-            )
-            LazyVerticalGrid(
-                //TO DO
-                columns = GridCells.Adaptive(128.dp),
-                contentPadding = PaddingValues(16.dp),
-                content = {
-                    itemsIndexed(productions) { index, item ->
-                        ProductionItem(item)
-                    }
-                }
-            )
+            items(productions.size) {
+                ProductionItem(productions[it])
+            }
+            item {
+                ProductionItem(null)
+            }
         }
     }
 }
+

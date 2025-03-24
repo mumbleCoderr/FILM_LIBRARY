@@ -40,7 +40,6 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -59,5 +58,5 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.material3)
     implementation(libs.coil.compose)
-
+    implementation(libs.androidx.navigation.compose)
 }

@@ -58,8 +58,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
 import coil.compose.AsyncImage
 import com.example.filmlibrary.R
+import com.example.filmlibrary.Screen
 import com.example.filmlibrary.data.Genre
 import com.example.filmlibrary.data.Production
 import com.example.filmlibrary.data.getProductions
@@ -74,8 +78,9 @@ import com.example.filmlibrary.utils.filterProductionsByGenreAndWatchedStatus
 import com.example.filmlibrary.utils.filterProductionsByTitle
 import com.example.filmlibrary.utils.sortProductions
 
+
 @Composable
-fun HomeScreen() {
+fun HomeScreen(navController: NavController) {
     val context = LocalContext.current
     val productions = getProductions(context)
     val genres = Genre.entries
@@ -134,8 +139,8 @@ fun HomeScreen() {
             selectedWatchedStatusFilter,
             selectedSorting
         )
-        if(input.isNotBlank()) ProductionList(filteredProductionsByTitle)
-        else ProductionList(finalFilteredSortedProductions)
+        if(input.isNotBlank()) ProductionList(filteredProductionsByTitle, navController)
+        else ProductionList(finalFilteredSortedProductions, navController)
     }
 }
 
@@ -304,7 +309,10 @@ fun SearchBar(
 }
 
 @Composable
-fun ProductionItem(production: Production? = null) {
+fun ProductionItem(
+    production: Production? = null,
+    navController: NavController,
+) {
     Box(
         modifier = Modifier
             .aspectRatio(1f)
@@ -330,6 +338,9 @@ fun ProductionItem(production: Production? = null) {
                             startY = 0f
                         )
                     )
+                    .clickable {
+                        navController.navigate(Screen.ProductionDetailsScreen.route + "/${production.title}")
+                    }
             )
             Text(
                 text = production.title.uppercase(),
@@ -354,6 +365,9 @@ fun ProductionItem(production: Production? = null) {
                         color = TextH2,
                         shape = RoundedCornerShape(22.dp)
                     )
+                    .clickable {
+                        navController.navigate(Screen.AddProductionScreen.route)
+                    }
             ) {
                 Icon(
                     imageVector = Icons.Filled.AddCircleOutline,
@@ -368,7 +382,10 @@ fun ProductionItem(production: Production? = null) {
 }
 
 @Composable
-fun ProductionList(productions: List<Production>) {
+fun ProductionList(
+    productions: List<Production>,
+    navController: NavController,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -393,10 +410,16 @@ fun ProductionList(productions: List<Production>) {
                 .fillMaxHeight()
         ) {
             items(productions.size) {
-                ProductionItem(productions[it])
+                ProductionItem(
+                    productions[it],
+                    navController,
+                )
             }
             item {
-                ProductionItem(null)
+                ProductionItem(
+                    null,
+                    navController,
+                )
             }
         }
     }

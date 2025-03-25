@@ -107,7 +107,7 @@ fun HomeScreen(navController: NavController) {
     }
 
     var selectedSorting = remember {
-        mutableStateOf(0);
+        mutableStateOf(0)
     }
 
     val filteredProductionsByTitle = filterProductionsByTitle(
@@ -237,7 +237,8 @@ fun FilterChips(
 ) {
     LazyRow {
         items(genres.size) { index ->
-            Chip(index,
+            Chip(
+                index,
                 genres,
                 selectedGenreFilter,
                 { it.name }
@@ -249,7 +250,8 @@ fun FilterChips(
             .padding(start = 48.dp)
     ) {
         items(watchedStatusEntries.size) { index ->
-            Chip(index,
+            Chip(
+                index,
                 watchedStatusEntries,
                 selectedWatchedStatusFilter,
                 { it }
@@ -258,7 +260,8 @@ fun FilterChips(
     }
     LazyRow {
         items(sortingEntries.size) { index ->
-            Chip(index,
+            Chip(
+                index,
                 sortingEntries,
                 selectedSorting,
                 { it }

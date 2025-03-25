@@ -40,6 +40,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -54,7 +55,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
@@ -66,7 +69,9 @@ import com.example.filmlibrary.R
 import com.example.filmlibrary.Screen
 import com.example.filmlibrary.data.Genre
 import com.example.filmlibrary.data.Production
-import com.example.filmlibrary.data.getProductions
+import com.example.filmlibrary.data.loadProductions
+import com.example.filmlibrary.data.saveProductions
+import com.example.filmlibrary.ui.theme.DarkGray
 import com.example.filmlibrary.ui.theme.DarkPink
 import com.example.filmlibrary.ui.theme.DarkPurple
 import com.example.filmlibrary.ui.theme.LightPink
@@ -82,7 +87,9 @@ import com.example.filmlibrary.utils.sortProductions
 @Composable
 fun HomeScreen(navController: NavController) {
     val context = LocalContext.current
-    val productions = getProductions(context)
+    var productions by remember {
+        mutableStateOf(loadProductions(context) ?: emptyList())
+    }
     val genres = Genre.entries
     val watchedStatusEntries = context.resources.getStringArray(R.array.isWatched).toList()
     val sortingEntries = context.resources.getStringArray(R.array.sorting).toList()
@@ -129,18 +136,29 @@ fun HomeScreen(navController: NavController) {
             .background(DarkPurple)
             .fillMaxSize()
     ) {
-        TopBar()
-        SearchBar(input, onInputChange = {input = it})
-        FilterChips(
-            genres,
-            watchedStatusEntries,
-            sortingEntries,
-            selectedGenreFilter,
-            selectedWatchedStatusFilter,
-            selectedSorting
-        )
-        if(input.isNotBlank()) ProductionList(filteredProductionsByTitle, navController)
-        else ProductionList(finalFilteredSortedProductions, navController)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black),
+                        startY = 0f
+                    )
+                )
+        ) {
+            TopBar()
+            SearchBar(input, onInputChange = { input = it })
+            FilterChips(
+                genres,
+                watchedStatusEntries,
+                sortingEntries,
+                selectedGenreFilter,
+                selectedWatchedStatusFilter,
+                selectedSorting
+            )
+            if (input.isNotBlank()) ProductionList(filteredProductionsByTitle, navController)
+            else ProductionList(finalFilteredSortedProductions, navController)
+        }
     }
 }
 
@@ -157,7 +175,7 @@ fun TopBar() {
         Text(
             text = stringResource(id = R.string.title1),
             color = TextH1,
-            fontSize = 25.sp,
+            fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .padding(bottom = 8.dp)
@@ -261,49 +279,48 @@ fun SearchBar(
                 top = 16.dp,
                 end = 16.dp
             )
+            .clip(RoundedCornerShape(22.dp))
+            .background(TextH2),
     ) {
+        if(input.isEmpty()){
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Search,
+                    contentDescription = "Search",
+                    modifier = Modifier
+                        .padding(
+                            start = 16.dp,
+                            end = 4.dp
+                        )
+                        .size(32.dp),
+                    tint = TextH1,
+                )
+                Text(
+                    text = stringResource(id = R.string.search_bar),
+                    color = TextH1,
+                    fontSize = 22.sp,
+                )
+            }
+        }
         BasicTextField(
             value = input,
             onValueChange = onInputChange,
+            textStyle = TextStyle(
+                color = TextH1,
+                fontSize = 22.sp,
+            ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(36.dp)
-                .background(
-                    color = TextH2,
-                    shape = RoundedCornerShape(12.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .padding(
+                    start = 16.dp,
+                    top = 3.dp,
                 )
-                .padding(horizontal = 12.dp, vertical = 2.dp),
-            textStyle = LocalTextStyle.current.copy(
-                color = TextH1,
-                fontSize = 18.sp,
-                lineHeight = 32.sp
-            ),
-            decorationBox = { innerTextField ->
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    Alignment.CenterStart
-                ) {
-                    if (input.isEmpty()) {
-                        Row() {
-                            Icon(
-                                imageVector = Icons.Filled.Search,
-                                contentDescription = "Search",
-                                modifier = Modifier
-                                    .size(48.dp),
-                                tint = TextH1,
-                            )
-                            Text(
-                                text = "Search",
-                                color = TextH1,
-                                fontSize = 18.sp,
-                                lineHeight = 32.sp
-                            )
-                        }
-                    }
-                    innerTextField()
-                }
-            }
+                .height(30.dp),
         )
     }
 }
@@ -317,7 +334,6 @@ fun ProductionItem(
         modifier = Modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(22.dp))
-            .background(DarkPurple)
             .fillMaxSize()
     ) {
         if (production != null) {

@@ -27,8 +27,8 @@ open class Production(
     var imageUri: String? = null,
 ): Serializable{
     init {
-        if (rate != null && (rate !in 1..10)) {
-            throw IllegalArgumentException("rate has to be in 1..10")
+        if (rate != null && (rate !in 1..5)) {
+            throw IllegalArgumentException("rate has to be in 1..5")
         }
 
         if (comment != null && comment!!.isBlank()) {

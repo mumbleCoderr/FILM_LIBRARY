@@ -3,6 +3,15 @@
     <string name="title1">Welcome in Film Library</string>
     <string name="title2">track your premiers and favourite ones</string>
     <string name="list">Your repository</string>
+    <string name="production_null">UNKNOWN</string>
+    <string name="search_bar">Search</string>
+    <string name="title_production_details_1">Production details</string>
+    <string name="title_production_details_2">check or edit</string>
+    <string name="four">4</string>
+    <string name="zero">0</string>
+    <string name="my_comment">My comment</string>
+    <string name="no_comment">Add a comment!</string>
+    <string name="save_button_text">save changes</string>
     <string-array name="isWatched">
         <item>ALL</item>
         <item>WATCHED</item>

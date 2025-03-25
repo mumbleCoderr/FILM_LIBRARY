@@ -27,7 +27,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             FilmLibraryTheme {
                 Navigation()
-                /*HomeScreen()*/
             }
         }
     }

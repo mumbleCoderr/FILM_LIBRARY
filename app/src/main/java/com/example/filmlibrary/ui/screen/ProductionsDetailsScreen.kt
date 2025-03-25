@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.filmlibrary.R
+import com.example.filmlibrary.Screen
 import com.example.filmlibrary.data.Movie
 import com.example.filmlibrary.data.Production
 import com.example.filmlibrary.data.Series
@@ -87,6 +89,9 @@ fun ProductionDetailsScreen(productionTitle: String?) {
     }
     var rating by remember {
         mutableStateOf(production?.rate ?: 0)
+    }
+    var watchedStatus by remember{
+        mutableStateOf(production?.isWatched ?: false)
     }
 
     if (production == null) {
@@ -129,6 +134,15 @@ fun ProductionDetailsScreen(productionTitle: String?) {
                                 production.rate = newRating
                             }
                         )
+                    }
+                    item{
+                        WatchedStatusSection(
+                        watchedStatus = watchedStatus,
+                            onWatchedStatusChange = { newStatus ->
+                                watchedStatus = newStatus
+                                production.isWatched = newStatus
+                            }
+                    )
                     }
                     item { SaveButtonSection(onClick = { saveProductions(context, productions) }) }
                 }
@@ -380,12 +394,70 @@ fun RateSection(
     }
 }
 
+@Composable
+fun IsWatchedChip(
+    chipText: String,
+    watchedStatus: Boolean,
+    onClick: () -> Unit
+){
+    Box(
+        modifier = Modifier
+            .width(200.dp)
+            .height(60.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                if(watchedStatus) DarkPurple else DarkGray
+            )
+            .padding(8.dp)
+            .clickable {
+                onClick()
+            },
+        contentAlignment = Alignment.Center,
+    ){
+        Text(
+            text = chipText,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextH1,
+        )
+    }
+}
+
+@Composable
+fun WatchedStatusSection(
+    onWatchedStatusChange: (Boolean) -> Unit,
+    watchedStatus: Boolean,
+){
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(
+                start = 16.dp,
+                end = 16.dp
+            ),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ){
+        IsWatchedChip(
+            chipText = stringResource(id = R.string.not_watched),
+            watchedStatus = !watchedStatus,
+            onClick = {onWatchedStatusChange(false)}
+        )
+        IsWatchedChip(
+            chipText = stringResource(id = R.string.watched),
+            watchedStatus = watchedStatus,
+            onClick = {onWatchedStatusChange(true)}
+        )
+    }
+}
+
 
 @Composable
 fun SaveButtonSection(onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .padding(top = 200.dp),
         contentAlignment = Alignment.Center
     ) {
         Button(

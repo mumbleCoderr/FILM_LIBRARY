@@ -13,6 +13,8 @@
     <string name="no_comment">Add a comment!</string>
     <string name="save_button_text">save changes</string>
     <string name="rate">My rate</string>
+    <string name="not_watched">NOT WATCHED</string>
+    <string name="watched">WATCHED</string>
     <string-array name="isWatched">
         <item>ALL</item>
         <item>WATCHED</item>

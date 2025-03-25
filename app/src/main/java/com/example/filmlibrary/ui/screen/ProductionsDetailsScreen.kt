@@ -3,6 +3,7 @@ package com.example.filmlibrary.ui.screen
 import android.content.Context
 import android.content.pm.ModuleInfo
 import android.graphics.drawable.Icon
+import android.widget.Toast
 import androidx.compose.animation.shrinkOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,7 +35,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButtonDefaults.Icon
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -43,6 +48,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,6 +78,8 @@ import com.example.filmlibrary.ui.theme.LightPink
 import com.example.filmlibrary.ui.theme.LightPurple
 import com.example.filmlibrary.ui.theme.TextH1
 import com.example.filmlibrary.ui.theme.TextH2
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -90,9 +98,12 @@ fun ProductionDetailsScreen(productionTitle: String?) {
     var rating by remember {
         mutableStateOf(production?.rate ?: 0)
     }
-    var watchedStatus by remember{
+    var watchedStatus by remember {
         mutableStateOf(production?.isWatched ?: false)
     }
+
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     if (production == null) {
         NotFound()
@@ -119,6 +130,9 @@ fun ProductionDetailsScreen(productionTitle: String?) {
                     item { ImageSection(production) }
                     item {
                         CommentSection(
+                            scope = scope,
+                            snackbarHostState = snackbarHostState,
+                            watchedStatus = watchedStatus,
                             comment = comment,
                             onCommentChange = { newComment ->
                                 comment = newComment
@@ -128,6 +142,9 @@ fun ProductionDetailsScreen(productionTitle: String?) {
                     }
                     item {
                         RateSection(
+                            scope = scope,
+                            snackbarHostState = snackbarHostState,
+                            watchedStatus = watchedStatus,
                             rating = rating,
                             onRatingChange = { newRating ->
                                 rating = newRating
@@ -135,19 +152,24 @@ fun ProductionDetailsScreen(productionTitle: String?) {
                             }
                         )
                     }
-                    item{
+                    item {
                         WatchedStatusSection(
-                        watchedStatus = watchedStatus,
+                            watchedStatus = watchedStatus,
                             onWatchedStatusChange = { newStatus ->
                                 watchedStatus = newStatus
                                 production.isWatched = newStatus
                             }
-                    )
+                        )
                     }
                     item { SaveButtonSection(onClick = { saveProductions(context, productions) }) }
                 }
             }
         }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .padding(top = 32.dp)
+        )
     }
 }
 
@@ -307,6 +329,9 @@ fun ImageSection(production: Production) {
 fun CommentSection(
     comment: String,
     onCommentChange: (String) -> Unit,
+    watchedStatus: Boolean,
+    scope: CoroutineScope,
+    snackbarHostState: SnackbarHostState,
 ) {
     Column(
         modifier = Modifier
@@ -333,21 +358,37 @@ fun CommentSection(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.Start,
         ) {
-            TextField(
-                value = comment,
-                onValueChange = onCommentChange,
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = DarkGray,
-                    unfocusedContainerColor = DarkGray,
-                    focusedTextColor = TextH2,
-                    unfocusedTextColor = TextH2,
-                    cursorColor = TextH2,
-                    focusedIndicatorColor = DarkGray,
-                    unfocusedIndicatorColor = DarkGray,
-                ),
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-            )
+                    .clickable(enabled = !watchedStatus) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = "You can leave a comment only if you have watched it",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    }
+            ) {
+                TextField(
+                    value = comment,
+                    onValueChange = onCommentChange,
+                    enabled = watchedStatus,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = DarkGray,
+                        unfocusedContainerColor = DarkGray,
+                        focusedTextColor = TextH2,
+                        unfocusedTextColor = TextH2,
+                        cursorColor = TextH2,
+                        focusedIndicatorColor = DarkGray,
+                        unfocusedIndicatorColor = DarkGray,
+                        disabledContainerColor = DarkGray,
+                        disabledTextColor = TextH2,
+                    ),
+                    modifier = Modifier
+                        .fillMaxSize()
+                )
+            }
         }
     }
 }
@@ -355,12 +396,23 @@ fun CommentSection(
 @Composable
 fun RateSection(
     rating: Int,
-    onRatingChange: (Int) -> Unit
+    onRatingChange: (Int) -> Unit,
+    scope: CoroutineScope,
+    snackbarHostState: SnackbarHostState,
+    watchedStatus: Boolean,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(16.dp)
+            .clickable(enabled = !watchedStatus) {
+                scope.launch {
+                    snackbarHostState.showSnackbar(
+                        message = "You can leave a rating only if you have watched it",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -372,24 +424,17 @@ fun RateSection(
             modifier = Modifier
                 .padding(end = 100.dp)
         )
-        Row(
-            modifier = Modifier
-                .fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            repeat(5) { index ->
-                Icon(
-                    imageVector = if (index < rating) Icons.Filled.StarRate else Icons.Outlined.StarRate,
-                    contentDescription = "production rate",
-                    tint = if(index < rating) TextH1 else TextH2,
-                    modifier = Modifier
-                        .size(26.dp)
-                        .clickable {
-                            onRatingChange(index + 1)
-                        }
-                )
-            }
+        repeat(5) { index ->
+            Icon(
+                imageVector = if (index < rating) Icons.Filled.StarRate else Icons.Outlined.StarRate,
+                contentDescription = "production rate",
+                tint = if (index < rating) TextH1 else TextH2,
+                modifier = Modifier
+                    .size(26.dp)
+                    .clickable(enabled = watchedStatus) {
+                        onRatingChange(index + 1)
+                    }
+            )
         }
     }
 }
@@ -399,21 +444,21 @@ fun IsWatchedChip(
     chipText: String,
     watchedStatus: Boolean,
     onClick: () -> Unit
-){
+) {
     Box(
         modifier = Modifier
             .width(200.dp)
             .height(60.dp)
             .clip(RoundedCornerShape(22.dp))
             .background(
-                if(watchedStatus) DarkPurple else DarkGray
+                if (watchedStatus) DarkPurple else DarkGray
             )
             .padding(8.dp)
             .clickable {
                 onClick()
             },
         contentAlignment = Alignment.Center,
-    ){
+    ) {
         Text(
             text = chipText,
             fontSize = 22.sp,
@@ -427,7 +472,7 @@ fun IsWatchedChip(
 fun WatchedStatusSection(
     onWatchedStatusChange: (Boolean) -> Unit,
     watchedStatus: Boolean,
-){
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -437,16 +482,16 @@ fun WatchedStatusSection(
             ),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
-    ){
+    ) {
         IsWatchedChip(
             chipText = stringResource(id = R.string.not_watched),
             watchedStatus = !watchedStatus,
-            onClick = {onWatchedStatusChange(false)}
+            onClick = { onWatchedStatusChange(false) }
         )
         IsWatchedChip(
             chipText = stringResource(id = R.string.watched),
             watchedStatus = watchedStatus,
-            onClick = {onWatchedStatusChange(true)}
+            onClick = { onWatchedStatusChange(true) }
         )
     }
 }

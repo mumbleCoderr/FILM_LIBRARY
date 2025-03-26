@@ -15,6 +15,8 @@
     <string name="rate">My rate</string>
     <string name="not_watched">NOT WATCHED</string>
     <string name="watched">WATCHED</string>
+    <string name="watched_scope_effect">Remember:
+    you can not change productions details when watched status is set to watched</string>
     <string-array name="isWatched">
         <item>ALL</item>
         <item>WATCHED</item>

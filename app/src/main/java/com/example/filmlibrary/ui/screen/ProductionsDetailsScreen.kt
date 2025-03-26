@@ -44,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -102,18 +103,27 @@ fun ProductionDetailsScreen(productionTitle: String?) {
         mutableStateOf(production?.isWatched ?: false)
     }
 
+    val message = stringResource(id = R.string.watched_scope_effect)
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
     if (production == null) {
         NotFound()
     } else {
-        Column(
+        if(production.isWatched){
+            LaunchedEffect(Unit) {
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    duration = SnackbarDuration.Short
+                )
+            }
+        }
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
         ) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
@@ -122,16 +132,24 @@ fun ProductionDetailsScreen(productionTitle: String?) {
                             startY = 0f
                         )
                     )
+                    .padding(bottom = 100.dp)
             ) {
                 LazyColumn(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                 ) {
                     item { ImageSection(production) }
                     item {
+                        WatchedStatusSection(
+                            watchedStatus = watchedStatus,
+                            onWatchedStatusChange = { newStatus ->
+                                watchedStatus = newStatus
+                                production.isWatched = newStatus
+                            }
+                        )
+                    }
+                    item {
                         CommentSection(
-                            scope = scope,
-                            snackbarHostState = snackbarHostState,
                             watchedStatus = watchedStatus,
                             comment = comment,
                             onCommentChange = { newComment ->
@@ -142,8 +160,6 @@ fun ProductionDetailsScreen(productionTitle: String?) {
                     }
                     item {
                         RateSection(
-                            scope = scope,
-                            snackbarHostState = snackbarHostState,
                             watchedStatus = watchedStatus,
                             rating = rating,
                             onRatingChange = { newRating ->
@@ -152,18 +168,13 @@ fun ProductionDetailsScreen(productionTitle: String?) {
                             }
                         )
                     }
-                    item {
-                        WatchedStatusSection(
-                            watchedStatus = watchedStatus,
-                            onWatchedStatusChange = { newStatus ->
-                                watchedStatus = newStatus
-                                production.isWatched = newStatus
-                            }
-                        )
-                    }
-                    item { SaveButtonSection(onClick = { saveProductions(context, productions) }) }
                 }
             }
+            SaveButtonSection(
+                onClick = { saveProductions(context, productions) },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+            )
         }
         SnackbarHost(
             hostState = snackbarHostState,
@@ -330,64 +341,55 @@ fun CommentSection(
     comment: String,
     onCommentChange: (String) -> Unit,
     watchedStatus: Boolean,
-    scope: CoroutineScope,
-    snackbarHostState: SnackbarHostState,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                start = 16.dp,
-                end = 16.dp,
-            ),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.Start,
-    ) {
-        Text(
-            text = stringResource(id = R.string.my_comment),
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextH1,
-            modifier = Modifier
-                .padding(bottom = 8.dp)
-        )
+    if (watchedStatus) {
         Column(
             modifier = Modifier
-                .clip(RoundedCornerShape(22.dp))
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
+                .fillMaxWidth()
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                ),
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.Start,
         ) {
-            Box(
+            Text(
+                text = stringResource(id = R.string.my_comment),
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextH1,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(enabled = !watchedStatus) {
-                        scope.launch {
-                            snackbarHostState.showSnackbar(
-                                message = "You can leave a comment only if you have watched it",
-                                duration = SnackbarDuration.Short
-                            )
-                        }
-                    }
+                    .padding(bottom = 8.dp)
+            )
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(22.dp))
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.Start,
             ) {
-                TextField(
-                    value = comment,
-                    onValueChange = onCommentChange,
-                    enabled = watchedStatus,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = DarkGray,
-                        unfocusedContainerColor = DarkGray,
-                        focusedTextColor = TextH2,
-                        unfocusedTextColor = TextH2,
-                        cursorColor = TextH2,
-                        focusedIndicatorColor = DarkGray,
-                        unfocusedIndicatorColor = DarkGray,
-                        disabledContainerColor = DarkGray,
-                        disabledTextColor = TextH2,
-                    ),
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                )
+                ) {
+                    TextField(
+                        value = comment,
+                        onValueChange = onCommentChange,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = DarkGray,
+                            unfocusedContainerColor = DarkGray,
+                            focusedTextColor = TextH2,
+                            unfocusedTextColor = TextH2,
+                            cursorColor = TextH2,
+                            focusedIndicatorColor = DarkGray,
+                            unfocusedIndicatorColor = DarkGray,
+                            disabledContainerColor = DarkGray,
+                            disabledTextColor = TextH2,
+                        ),
+                        modifier = Modifier
+                            .fillMaxSize()
+                    )
+                }
             }
         }
     }
@@ -397,44 +399,36 @@ fun CommentSection(
 fun RateSection(
     rating: Int,
     onRatingChange: (Int) -> Unit,
-    scope: CoroutineScope,
-    snackbarHostState: SnackbarHostState,
     watchedStatus: Boolean,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .clickable(enabled = !watchedStatus) {
-                scope.launch {
-                    snackbarHostState.showSnackbar(
-                        message = "You can leave a rating only if you have watched it",
-                        duration = SnackbarDuration.Short
-                    )
-                }
-            },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(
-            text = stringResource(id = R.string.rate),
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextH1,
+    if(watchedStatus) {
+        Row(
             modifier = Modifier
-                .padding(end = 100.dp)
-        )
-        repeat(5) { index ->
-            Icon(
-                imageVector = if (index < rating) Icons.Filled.StarRate else Icons.Outlined.StarRate,
-                contentDescription = "production rate",
-                tint = if (index < rating) TextH1 else TextH2,
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(id = R.string.rate),
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextH1,
                 modifier = Modifier
-                    .size(26.dp)
-                    .clickable(enabled = watchedStatus) {
-                        onRatingChange(index + 1)
-                    }
+                    .padding(end = 100.dp)
             )
+            repeat(5) { index ->
+                Icon(
+                    imageVector = if (index < rating) Icons.Filled.StarRate else Icons.Outlined.StarRate,
+                    contentDescription = "production rate",
+                    tint = if (index < rating) TextH1 else TextH2,
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clickable {
+                            onRatingChange(index + 1)
+                        }
+                )
+            }
         }
     }
 }
@@ -478,7 +472,8 @@ fun WatchedStatusSection(
             .fillMaxWidth()
             .padding(
                 start = 16.dp,
-                end = 16.dp
+                end = 16.dp,
+                bottom = 16.dp,
             ),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -498,12 +493,17 @@ fun WatchedStatusSection(
 
 
 @Composable
-fun SaveButtonSection(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
+fun SaveButtonSection(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
             .fillMaxWidth()
-            .padding(top = 200.dp),
-        contentAlignment = Alignment.Center
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                bottom = 32.dp
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
     ) {
         Button(
             onClick = { onClick() },
@@ -515,11 +515,15 @@ fun SaveButtonSection(onClick: () -> Unit) {
                 containerColor = DarkPurple,
                 disabledContentColor = TextH2,
                 disabledContainerColor = LightPurple,
-            )
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
         ) {
             Text(
-                text = stringResource(id = R.string.save_button_text),
-                fontSize = 18.sp
+                text = stringResource(id = R.string.save_button_text).uppercase(),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
             )
         }
     }

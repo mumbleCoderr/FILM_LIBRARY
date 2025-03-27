@@ -17,6 +17,8 @@
     <string name="watched">WATCHED</string>
     <string name="watched_scope_warning">You can not change productions image or details when status is set to WATCHED</string>
     <string name="watched_scope_info">You can change productions image or details by clicking on it</string>
+    <string name="calendar_confirm">CONFIRM</string>
+    <string name="calendar_dismiss">DISMISS</string>
     <string-array name="isWatched">
         <item>ALL</item>
         <item>WATCHED</item>

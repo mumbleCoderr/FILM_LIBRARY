@@ -36,6 +36,18 @@ open class Production(
         }
     }
 
+    open fun deepCopy(): Production {
+        return Production(
+            title = this.title,
+            genre = this.genre,
+            releaseDate = this.releaseDate,
+            isWatched = this.isWatched,
+            comment = this.comment,
+            rate = this.rate,
+            imageUri = this.imageUri
+        )
+    }
+
     override fun toString(): String {
         return """
                         Production: ${this.javaClass.simpleName}
@@ -59,6 +71,20 @@ class Movie(
     imageUri: String? = null,
     var durationInMinutes: Int
 ) : Production(title, genre, releaseDate, isWatched, comment, rate, imageUri){
+
+    override fun deepCopy(): Production {
+        return Movie(
+            title = this.title,
+            genre = this.genre,
+            releaseDate = this.releaseDate,
+            isWatched = this.isWatched,
+            comment = this.comment,
+            rate = this.rate,
+            imageUri = this.imageUri,
+            durationInMinutes = this.durationInMinutes
+        )
+    }
+
     override fun toString(): String {
         return super.toString() +
                 "duration: ${durationInMinutes/60} ${durationInMinutes%60}"
@@ -75,6 +101,20 @@ class Series(
     imageUri: String? = null,
     var parts: MutableMap<Int, Int>
 ): Production(title, genre, releaseDate, isWatched, comment, rate, imageUri){
+
+    override fun deepCopy(): Production {
+        return Series(
+            title = this.title,
+            genre = this.genre,
+            releaseDate = this.releaseDate,
+            isWatched = this.isWatched,
+            comment = this.comment,
+            rate = this.rate,
+            imageUri = this.imageUri,
+            parts = this.parts.toMutableMap()
+        )
+    }
+
     override fun toString(): String {
         return super.toString() +
                 "parts: ${parts.entries.joinToString {"${it.key}:${it.value}"}}"

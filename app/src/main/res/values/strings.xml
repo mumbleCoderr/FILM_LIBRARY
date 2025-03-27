@@ -11,10 +11,14 @@
     <string name="zero">0</string>
     <string name="my_comment">My comment</string>
     <string name="no_comment">Add a comment!</string>
-    <string name="save_button_text">save changes</string>
+    <string name="save_button_text">confirm changes</string>
     <string name="rate">My rate</string>
     <string name="not_watched">NOT WATCHED</string>
     <string name="watched">WATCHED</string>
+    <string name="watched_scope_warning">You can not change productions image or details when status is set to WATCHED</string>
+    <string name="watched_scope_info">You can change productions image or details by clicking on it</string>
+    <string name="calendar_confirm">CONFIRM</string>
+    <string name="calendar_dismiss">DISMISS</string>
     <string-array name="isWatched">
         <item>ALL</item>
         <item>WATCHED</item>

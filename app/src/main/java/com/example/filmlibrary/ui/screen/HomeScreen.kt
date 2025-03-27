@@ -68,7 +68,9 @@ import coil.compose.AsyncImage
 import com.example.filmlibrary.R
 import com.example.filmlibrary.Screen
 import com.example.filmlibrary.data.Genre
+import com.example.filmlibrary.data.Movie
 import com.example.filmlibrary.data.Production
+import com.example.filmlibrary.data.Series
 import com.example.filmlibrary.data.loadProductions
 import com.example.filmlibrary.data.saveProductions
 import com.example.filmlibrary.ui.theme.DarkGray
@@ -82,6 +84,7 @@ import com.example.filmlibrary.utils.filterProductionsByGenre
 import com.example.filmlibrary.utils.filterProductionsByGenreAndWatchedStatus
 import com.example.filmlibrary.utils.filterProductionsByTitle
 import com.example.filmlibrary.utils.sortProductions
+import java.time.LocalDate
 
 
 @Composable

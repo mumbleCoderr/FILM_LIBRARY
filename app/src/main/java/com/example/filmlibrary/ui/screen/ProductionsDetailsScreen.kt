@@ -1,16 +1,18 @@
 package com.example.filmlibrary.ui.screen
 
-import android.content.Context
-import android.content.pm.ModuleInfo
-import android.graphics.drawable.Icon
-import android.widget.Toast
-import androidx.compose.animation.shrinkOut
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -21,30 +23,29 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddAPhoto
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarRate
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarRate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButtonDefaults.Icon
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,18 +56,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role.Companion.Button
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.filmlibrary.R
-import com.example.filmlibrary.Screen
+import com.example.filmlibrary.data.Genre
 import com.example.filmlibrary.data.Movie
 import com.example.filmlibrary.data.Production
 import com.example.filmlibrary.data.Series
@@ -74,12 +74,14 @@ import com.example.filmlibrary.data.loadProductions
 import com.example.filmlibrary.data.saveProductions
 import com.example.filmlibrary.ui.theme.DarkGray
 import com.example.filmlibrary.ui.theme.DarkPurple
-import com.example.filmlibrary.ui.theme.LightPink
 import com.example.filmlibrary.ui.theme.LightPurple
 import com.example.filmlibrary.ui.theme.TextH1
 import com.example.filmlibrary.ui.theme.TextH2
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
@@ -88,32 +90,77 @@ fun ProductionDetailsScreen(productionTitle: String?) {
     var productions by remember {
         mutableStateOf(loadProductions(context) ?: emptyList())
     }
-
     val production = productions.find {
         it.title == productionTitle
-    }
+    } ?: Production(
+        title = productionTitle ?: "add title",
+        genre = Genre.ALL,
+        releaseDate = LocalDate.now(),
+        comment = "leave a comment"
+    )
+    val genres = Genre.entries
     var comment by remember {
-        mutableStateOf(production?.comment ?: "")
+        mutableStateOf(production.comment)
     }
     var rating by remember {
-        mutableStateOf(production?.rate ?: 0)
+        mutableStateOf(production.rate)
     }
     var watchedStatus by remember {
-        mutableStateOf(production?.isWatched ?: false)
+        mutableStateOf(production.isWatched)
+    }
+    var imageUri by remember {
+        mutableStateOf(production.imageUri)
+    }
+    var title by remember {
+        mutableStateOf(production.title)
+    }
+    var releaseDate by remember {
+        mutableStateOf(production.releaseDate)
+    }
+    var genre by remember {
+        mutableStateOf(production.genre)
+    }
+    var openChooseGenre by remember {
+        mutableStateOf(false)
+    }
+    var durationOrParts by remember {
+        mutableStateOf(
+            when (production) {
+                is Movie -> production.durationInMinutes
+                is Series -> production.parts.keys.size
+                else -> 0
+            }
+        )
     }
 
     val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val hostState = remember { SnackbarHostState() }
+    val watchedScopeInfo = stringResource(id = R.string.watched_scope_info)
+    val watchedScopeWarning = stringResource(id = R.string.watched_scope_warning)
 
     if (production == null) {
         NotFound()
     } else {
-        Column(
+        if (!watchedStatus) {
+            LaunchedEffect(watchedScopeInfo) {
+                hostState.showSnackbar(
+                    message = watchedScopeInfo,
+                )
+            }
+        }
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = {
+                        if (openChooseGenre) {
+                            openChooseGenre = false
+                        }
+                    })
+                }
         ) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
@@ -122,34 +169,57 @@ fun ProductionDetailsScreen(productionTitle: String?) {
                             startY = 0f
                         )
                     )
+                    .padding(bottom = 100.dp)
             ) {
                 LazyColumn(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                 ) {
-                    item { ImageSection(production) }
                     item {
-                        CommentSection(
-                            scope = scope,
-                            snackbarHostState = snackbarHostState,
+                        ImageSection(
+                            production = production,
                             watchedStatus = watchedStatus,
-                            comment = comment,
-                            onCommentChange = { newComment ->
-                                comment = newComment
-                                production.comment = newComment.trim()
-                            }
+                            title = title,
+                            onTitleChange = { newTitle ->
+                                title = newTitle
+                                production.title = newTitle
+                            },
+                            onReleaseDateChange = { newRelease ->
+                                releaseDate = newRelease
+                                production.releaseDate = newRelease
+                            },
+                            genre = genre,
+                            openChooseGenre = openChooseGenre,
+                            onOpenGenreChooseChange = { newOpenGenreChoose ->
+                                openChooseGenre = newOpenGenreChoose
+                            },
+                            onDurationOrPartsChange = { newDurationOrParts ->
+                                durationOrParts = newDurationOrParts
+                                when (production) {
+                                    is Movie -> production.durationInMinutes = newDurationOrParts
+                                    is Series -> production.parts[newDurationOrParts] = 0
+                                }
+                            },
+                            image = Uri.parse(imageUri),
+                            onImageSelected = { newUri ->
+                                imageUri = newUri.toString()
+                                production.imageUri = newUri.toString()
+                            },
+                            scope = scope,
+                            hostState = hostState,
+                            scopeMessage = watchedScopeWarning,
                         )
                     }
                     item {
-                        RateSection(
-                            scope = scope,
-                            snackbarHostState = snackbarHostState,
+                        GenreChooseSection(
+                            openGenreChoose = openChooseGenre,
+                            genres = genres,
+                            onGenreChange = { newGenre ->
+                                genre = newGenre
+                                production.genre = newGenre
+                            },
                             watchedStatus = watchedStatus,
-                            rating = rating,
-                            onRatingChange = { newRating ->
-                                rating = newRating
-                                production.rate = newRating
-                            }
+                            actualGenre = genre,
                         )
                     }
                     item {
@@ -161,12 +231,36 @@ fun ProductionDetailsScreen(productionTitle: String?) {
                             }
                         )
                     }
-                    item { SaveButtonSection(onClick = { saveProductions(context, productions) }) }
+                    item {
+                        CommentSection(
+                            watchedStatus = watchedStatus,
+                            comment = comment!!,
+                            onCommentChange = { newComment ->
+                                comment = newComment
+                                production.comment = newComment.trim()
+                            }
+                        )
+                    }
+                    item {
+                        RateSection(
+                            watchedStatus = watchedStatus,
+                            rating = rating!!,
+                            onRatingChange = { newRating ->
+                                rating = newRating
+                                production.rate = newRating
+                            }
+                        )
+                    }
                 }
             }
+            SaveButtonSection(
+                onClick = { saveProductions(context, productions) },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+            )
         }
         SnackbarHost(
-            hostState = snackbarHostState,
+            hostState = hostState,
             modifier = Modifier
                 .padding(top = 32.dp)
         )
@@ -206,14 +300,139 @@ fun NotFound() {
     }
 }
 
-@Preview
+fun Long?.toLocalDate(): LocalDate? {
+    return this?.let { millis ->
+        Instant.ofEpochMilli(millis)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+    }
+}
+
+fun LocalDate.toMillis(): Long {
+    return this.atStartOfDay(ZoneId.systemDefault())
+        .toInstant()
+        .toEpochMilli()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ImageSection(production: Production) {
+fun DatePickerDialog(
+    openDialog: Boolean,
+    onOpenDialogChange: (Boolean) -> Unit,
+    dateState: DatePickerState,
+    onReleaseDateChange: (LocalDate) -> Unit
+) {
+    if (openDialog) {
+        DatePickerDialog(
+            onDismissRequest = { onOpenDialogChange(false) },
+            confirmButton = {
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth(0.48f),
+                    onClick = {
+                        onOpenDialogChange(false)
+                        if (dateState.selectedDateMillis != null) {
+                            onReleaseDateChange(dateState.selectedDateMillis.toLocalDate()!!)
+                        }
+                    },
+                    colors = ButtonColors(
+                        containerColor = DarkPurple,
+                        contentColor = TextH1,
+                        disabledContainerColor = LightPurple,
+                        disabledContentColor = TextH2,
+                    )
+                ) {
+                    Text(text = stringResource(id = R.string.calendar_confirm))
+                }
+            },
+            dismissButton = {
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth(0.48f),
+                    onClick = { onOpenDialogChange(false) },
+                    colors = ButtonColors(
+                        containerColor = DarkPurple,
+                        contentColor = TextH1,
+                        disabledContainerColor = LightPurple,
+                        disabledContentColor = TextH2,
+                    )
+                ) {
+                    Text(text = stringResource(id = R.string.calendar_dismiss))
+                }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = DarkGray,
+            )
+        ) {
+            DatePicker(
+                state = dateState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = DarkGray,
+                    titleContentColor = TextH1,
+                    headlineContentColor = TextH1,
+                    weekdayContentColor = TextH1,
+                    subheadContentColor = TextH1,
+                    navigationContentColor = TextH1,
+                    yearContentColor = TextH1,
+                    currentYearContentColor = TextH1,
+                    selectedYearContentColor = TextH1,
+                    selectedYearContainerColor = DarkPurple,
+                    dayContentColor = TextH1,
+                    selectedDayContentColor = TextH1,
+                    selectedDayContainerColor = DarkPurple,
+                    dayInSelectionRangeContentColor = TextH1,
+                    dayInSelectionRangeContainerColor = DarkPurple,
+                    dividerColor = DarkGray,
+                )
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ImageSection(
+    production: Production,
+    watchedStatus: Boolean,
+    title: String,
+    onTitleChange: (String) -> Unit,
+    genre: Genre,
+    openChooseGenre: Boolean,
+    onOpenGenreChooseChange: (Boolean) -> Unit,
+    onReleaseDateChange: (LocalDate) -> Unit,
+    onDurationOrPartsChange: (Int) -> Unit,
+    image: Uri,
+    onImageSelected: (Uri) -> Unit,
+    scope: CoroutineScope,
+    hostState: SnackbarHostState,
+    scopeMessage: String,
+) {
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri ->
+            onImageSelected(uri ?: image)
+        },
+    )
+    var openDialog by remember { mutableStateOf(false) }
+    var dateState = rememberDatePickerState(
+        initialSelectedDateMillis = production.releaseDate.toMillis(),
+        yearRange = 1900..LocalDate.now().year + 2
+    )
     Box(
         modifier = Modifier
             .aspectRatio(1f)
             .fillMaxSize()
     ) {
+        DatePickerDialog(
+            openDialog = openDialog,
+            onOpenDialogChange = { newOpenDialog ->
+                openDialog = newOpenDialog
+            },
+            dateState = dateState,
+            onReleaseDateChange = { newReleaseDate ->
+                onReleaseDateChange(newReleaseDate)
+            }
+        )
         if (production.imageUri != null) {
             production.imageUri?.let { imageUri ->
                 AsyncImage(
@@ -222,6 +441,19 @@ fun ImageSection(production: Production) {
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
+                        .clickable {
+                            if (watchedStatus) {
+                                scope.launch {
+                                    hostState.showSnackbar(
+                                        message = scopeMessage,
+                                    )
+                                }
+                            } else {
+                                imagePicker.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+                        }
                 )
             }
             Box(
@@ -247,14 +479,28 @@ fun ImageSection(production: Production) {
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.Start
                 ) {
-                    Text(
-                        text = production.title.uppercase(),
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextH1,
-                        lineHeight = 32.sp,
+                    BasicTextField(
+                        enabled = !watchedStatus,
+                        value = title.uppercase(),
+                        onValueChange = onTitleChange,
+                        textStyle = TextStyle(
+                            color = TextH1,
+                            fontSize = 32.sp,
+                            lineHeight = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
                         modifier = Modifier
                             .fillMaxWidth(0.65f)
+                            .background(Color.Transparent)
+                            .clickable {
+                                if (watchedStatus) {
+                                    scope.launch {
+                                        hostState.showSnackbar(
+                                            message = scopeMessage,
+                                        )
+                                    }
+                                }
+                            }
                     )
                     Row(
                         modifier = Modifier
@@ -269,19 +515,42 @@ fun ImageSection(production: Production) {
                             color = TextH2,
                             modifier = Modifier
                                 .padding(end = 16.dp)
+                                .clickable {
+                                    if (watchedStatus) {
+                                        scope.launch {
+                                            hostState.showSnackbar(
+                                                message = scopeMessage,
+                                            )
+                                        }
+                                    } else {
+                                        openDialog = !openDialog
+                                    }
+                                }
                         )
                         Text(
-                            text = production.genre.name.lowercase(),
+                            text = genre.name.lowercase(),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextH2,
                             modifier = Modifier
                                 .padding(end = 16.dp)
+                                .clickable {
+                                    if (watchedStatus) {
+                                        scope.launch {
+                                            hostState.showSnackbar(
+                                                message = scopeMessage,
+                                            )
+                                        }
+                                    } else {
+                                        onOpenGenreChooseChange(!openChooseGenre)
+                                    }
+                                }
                         )
                         when (production) {
                             is Movie -> {
                                 Text(
-                                    text = "${production.durationInMinutes / 60}h ${production.durationInMinutes % 60}min",
+                                    text = "${production.durationInMinutes / 60}h " +
+                                            "${production.durationInMinutes % 60}min",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = TextH2
@@ -290,7 +559,8 @@ fun ImageSection(production: Production) {
 
                             is Series -> {
                                 Text(
-                                    text = "${production.parts.keys.size} seasons",
+                                    text = "${production.parts.keys.size} s." +
+                                            " ${production.parts.values.sumOf { it }} e.",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = TextH2
@@ -325,69 +595,124 @@ fun ImageSection(production: Production) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun GenreChooseSection(
+    openGenreChoose: Boolean,
+    actualGenre: Genre,
+    genres: List<Genre>,
+    onGenreChange: (Genre) -> Unit,
+    watchedStatus: Boolean,
+) {
+    val genres = genres.filter { it.name != "ALL" }
+    if (openGenreChoose && !watchedStatus) {
+        FlowRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = 16.dp,
+                ),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            repeat(genres.size) { index ->
+                GenreChip(
+                    genre = genres[index],
+                    modifier = Modifier
+                        .clickable { onGenreChange(genres[index]) },
+                    actualGenre = actualGenre
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun GenreChip(
+    modifier: Modifier = Modifier,
+    genre: Genre,
+    actualGenre: Genre
+) {
+    Box(
+        modifier = modifier
+            .height(48.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (genre == actualGenre) DarkPurple
+                else DarkGray
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = genre.name,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = TextH1,
+            modifier = Modifier
+                .padding(
+                    start = 8.dp,
+                    end = 8.dp,
+                )
+        )
+    }
+}
+
 @Composable
 fun CommentSection(
     comment: String,
     onCommentChange: (String) -> Unit,
     watchedStatus: Boolean,
-    scope: CoroutineScope,
-    snackbarHostState: SnackbarHostState,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(
-                start = 16.dp,
-                end = 16.dp,
-            ),
-        verticalArrangement = Arrangement.Top,
-        horizontalAlignment = Alignment.Start,
-    ) {
-        Text(
-            text = stringResource(id = R.string.my_comment),
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextH1,
-            modifier = Modifier
-                .padding(bottom = 8.dp)
-        )
+    if (watchedStatus) {
         Column(
             modifier = Modifier
-                .clip(RoundedCornerShape(22.dp))
-                .fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
+                .fillMaxWidth()
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                ),
+            verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.Start,
         ) {
-            Box(
+            Text(
+                text = stringResource(id = R.string.my_comment),
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextH1,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(enabled = !watchedStatus) {
-                        scope.launch {
-                            snackbarHostState.showSnackbar(
-                                message = "You can leave a comment only if you have watched it",
-                                duration = SnackbarDuration.Short
-                            )
-                        }
-                    }
+                    .padding(bottom = 8.dp)
+            )
+            Column(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(22.dp))
+                    .fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.Start,
             ) {
-                TextField(
-                    value = comment,
-                    onValueChange = onCommentChange,
-                    enabled = watchedStatus,
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = DarkGray,
-                        unfocusedContainerColor = DarkGray,
-                        focusedTextColor = TextH2,
-                        unfocusedTextColor = TextH2,
-                        cursorColor = TextH2,
-                        focusedIndicatorColor = DarkGray,
-                        unfocusedIndicatorColor = DarkGray,
-                        disabledContainerColor = DarkGray,
-                        disabledTextColor = TextH2,
-                    ),
+                Box(
                     modifier = Modifier
                         .fillMaxSize()
-                )
+                ) {
+                    TextField(
+                        value = comment,
+                        onValueChange = onCommentChange,
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = DarkGray,
+                            unfocusedContainerColor = DarkGray,
+                            focusedTextColor = TextH2,
+                            unfocusedTextColor = TextH2,
+                            cursorColor = TextH2,
+                            focusedIndicatorColor = DarkGray,
+                            unfocusedIndicatorColor = DarkGray,
+                            disabledContainerColor = DarkGray,
+                            disabledTextColor = TextH2,
+                        ),
+                        modifier = Modifier
+                            .fillMaxSize()
+                    )
+                }
             }
         }
     }
@@ -397,44 +722,36 @@ fun CommentSection(
 fun RateSection(
     rating: Int,
     onRatingChange: (Int) -> Unit,
-    scope: CoroutineScope,
-    snackbarHostState: SnackbarHostState,
     watchedStatus: Boolean,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .clickable(enabled = !watchedStatus) {
-                scope.launch {
-                    snackbarHostState.showSnackbar(
-                        message = "You can leave a rating only if you have watched it",
-                        duration = SnackbarDuration.Short
-                    )
-                }
-            },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(
-            text = stringResource(id = R.string.rate),
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextH1,
+    if (watchedStatus) {
+        Row(
             modifier = Modifier
-                .padding(end = 100.dp)
-        )
-        repeat(5) { index ->
-            Icon(
-                imageVector = if (index < rating) Icons.Filled.StarRate else Icons.Outlined.StarRate,
-                contentDescription = "production rate",
-                tint = if (index < rating) TextH1 else TextH2,
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(id = R.string.rate),
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextH1,
                 modifier = Modifier
-                    .size(26.dp)
-                    .clickable(enabled = watchedStatus) {
-                        onRatingChange(index + 1)
-                    }
+                    .padding(end = 100.dp)
             )
+            repeat(5) { index ->
+                Icon(
+                    imageVector = if (index < rating) Icons.Filled.StarRate else Icons.Outlined.StarRate,
+                    contentDescription = "production rate",
+                    tint = if (index < rating) TextH1 else TextH2,
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clickable {
+                            onRatingChange(index + 1)
+                        }
+                )
+            }
         }
     }
 }
@@ -478,7 +795,8 @@ fun WatchedStatusSection(
             .fillMaxWidth()
             .padding(
                 start = 16.dp,
-                end = 16.dp
+                end = 16.dp,
+                bottom = 16.dp,
             ),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -498,12 +816,20 @@ fun WatchedStatusSection(
 
 
 @Composable
-fun SaveButtonSection(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
+fun SaveButtonSection(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
             .fillMaxWidth()
-            .padding(top = 200.dp),
-        contentAlignment = Alignment.Center
+            .padding(
+                start = 16.dp,
+                end = 16.dp,
+                bottom = 32.dp
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
     ) {
         Button(
             onClick = { onClick() },
@@ -515,11 +841,15 @@ fun SaveButtonSection(onClick: () -> Unit) {
                 containerColor = DarkPurple,
                 disabledContentColor = TextH2,
                 disabledContainerColor = LightPurple,
-            )
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
         ) {
             Text(
-                text = stringResource(id = R.string.save_button_text),
-                fontSize = 18.sp
+                text = stringResource(id = R.string.save_button_text).uppercase(),
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
             )
         }
     }

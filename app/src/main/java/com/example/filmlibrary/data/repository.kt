@@ -57,7 +57,7 @@ class Movie(
     comment: String? = null,
     rate: Int? = null,
     imageUri: String? = null,
-    val durationInMinutes: Int
+    var durationInMinutes: Int
 ) : Production(title, genre, releaseDate, isWatched, comment, rate, imageUri){
     override fun toString(): String {
         return super.toString() +
@@ -73,7 +73,7 @@ class Series(
     comment: String? = null,
     rate: Int? = null,
     imageUri: String? = null,
-    val parts: Map<Int, Int>
+    var parts: MutableMap<Int, Int>
 ): Production(title, genre, releaseDate, isWatched, comment, rate, imageUri){
     override fun toString(): String {
         return super.toString() +

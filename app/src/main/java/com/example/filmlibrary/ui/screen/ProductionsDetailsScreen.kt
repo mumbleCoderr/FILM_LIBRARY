@@ -1,10 +1,9 @@
 package com.example.filmlibrary.ui.screen
 
-import android.content.Context
-import android.content.pm.ModuleInfo
-import android.graphics.drawable.Icon
-import android.widget.Toast
-import androidx.compose.animation.shrinkOut
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,32 +20,32 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddAPhoto
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarRate
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarRate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerColors
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButtonDefaults.Icon
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -59,15 +58,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role.Companion.Button
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import coil.compose.AsyncImage
 import com.example.filmlibrary.R
-import com.example.filmlibrary.Screen
+import com.example.filmlibrary.data.Genre
 import com.example.filmlibrary.data.Movie
 import com.example.filmlibrary.data.Production
 import com.example.filmlibrary.data.Series
@@ -75,13 +74,17 @@ import com.example.filmlibrary.data.loadProductions
 import com.example.filmlibrary.data.saveProductions
 import com.example.filmlibrary.ui.theme.DarkGray
 import com.example.filmlibrary.ui.theme.DarkPurple
-import com.example.filmlibrary.ui.theme.LightPink
 import com.example.filmlibrary.ui.theme.LightPurple
 import com.example.filmlibrary.ui.theme.TextH1
 import com.example.filmlibrary.ui.theme.TextH2
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Date
 
 @Composable
 fun ProductionDetailsScreen(productionTitle: String?) {
@@ -102,19 +105,40 @@ fun ProductionDetailsScreen(productionTitle: String?) {
     var watchedStatus by remember {
         mutableStateOf(production?.isWatched ?: false)
     }
+    var imageUri by remember {
+        mutableStateOf(production?.imageUri)
+    }
+    var title by remember {
+        mutableStateOf(production?.title ?: "")
+    }
+    var releaseDate by remember {
+        mutableStateOf(production?.releaseDate ?: LocalDate.now())
+    }
+    var genre by remember {
+        mutableStateOf(production?.genre ?: Genre.ALL)
+    }
+    var durationOrParts by remember {
+        mutableStateOf(
+            when (production) {
+                is Movie -> production.durationInMinutes
+                is Series -> production.parts.keys.size
+                else -> 0
+            }
+        )
+    }
 
-    val message = stringResource(id = R.string.watched_scope_effect)
     val scope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val hostState = remember { SnackbarHostState() }
+    val watchedScopeInfo = stringResource(id = R.string.watched_scope_info)
+    val watchedScopeWarning = stringResource(id = R.string.watched_scope_warning)
 
     if (production == null) {
         NotFound()
     } else {
-        if(production.isWatched){
-            LaunchedEffect(Unit) {
-                snackbarHostState.showSnackbar(
-                    message = message,
-                    duration = SnackbarDuration.Short
+        if (!watchedStatus) {
+            LaunchedEffect(watchedScopeInfo) {
+                hostState.showSnackbar(
+                    message = watchedScopeInfo,
                 )
             }
         }
@@ -138,7 +162,38 @@ fun ProductionDetailsScreen(productionTitle: String?) {
                     modifier = Modifier
                         .fillMaxWidth()
                 ) {
-                    item { ImageSection(production) }
+                    item {
+                        ImageSection(
+                            production = production,
+                            watchedStatus = watchedStatus,
+                            onTitleChange = { newTitle ->
+                                title = newTitle
+                                production.title = newTitle
+                            },
+                            onReleaseDateChange = { newRelease ->
+                                releaseDate = newRelease
+                                production.releaseDate = newRelease
+                            },
+                            onGenreChange = { newGenre ->
+                                genre = newGenre
+                                production.genre = newGenre
+                            },
+                            onDurationOrPartsChange = { newDurationOrParts ->
+                                durationOrParts = newDurationOrParts
+                                when (production) {
+                                    is Movie -> production.durationInMinutes = newDurationOrParts
+                                    is Series -> production.parts[newDurationOrParts] = 0
+                                }
+                            },
+                            onImageSelected = { newUri ->
+                                imageUri = newUri.toString()
+                                production.imageUri = newUri.toString()
+                            },
+                            scope = scope,
+                            hostState = hostState,
+                            scopeMessage = watchedScopeWarning,
+                        )
+                    }
                     item {
                         WatchedStatusSection(
                             watchedStatus = watchedStatus,
@@ -177,7 +232,7 @@ fun ProductionDetailsScreen(productionTitle: String?) {
             )
         }
         SnackbarHost(
-            hostState = snackbarHostState,
+            hostState = hostState,
             modifier = Modifier
                 .padding(top = 32.dp)
         )
@@ -217,14 +272,136 @@ fun NotFound() {
     }
 }
 
-@Preview
+fun Long?.toLocalDate(): LocalDate? {
+    return this?.let { millis ->
+        Instant.ofEpochMilli(millis)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+    }
+}
+
+fun LocalDate.toMillis(): Long {
+    return this.atStartOfDay(ZoneId.systemDefault())
+        .toInstant()
+        .toEpochMilli()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ImageSection(production: Production) {
+fun DatePickerDialog(
+    openDialog: Boolean,
+    onOpenDialogChange: (Boolean) -> Unit,
+    dateState: DatePickerState,
+    onReleaseDateChange: (LocalDate) -> Unit
+) {
+    if (openDialog) {
+        DatePickerDialog(
+            onDismissRequest = { onOpenDialogChange(false) },
+            confirmButton = {
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth(0.48f),
+                    onClick = {
+                        onOpenDialogChange(false)
+                        if (dateState.selectedDateMillis != null) {
+                            onReleaseDateChange(dateState.selectedDateMillis.toLocalDate()!!)
+                        }
+                    },
+                    colors = ButtonColors(
+                        containerColor = DarkPurple,
+                        contentColor = TextH1,
+                        disabledContainerColor = LightPurple,
+                        disabledContentColor = TextH2,
+                    )
+                ) {
+                    Text(text = "CONFIRM")
+                }
+            },
+            dismissButton = {
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth(0.48f),
+                    onClick = { onOpenDialogChange(false) },
+                    colors = ButtonColors(
+                        containerColor = DarkPurple,
+                        contentColor = TextH1,
+                        disabledContainerColor = LightPurple,
+                        disabledContentColor = TextH2,
+                    )
+                ) {
+                    Text(text = "DISMISS")
+                }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = DarkGray,
+            )
+        ) {
+            DatePicker(
+                state = dateState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = DarkGray,
+                    titleContentColor = TextH1,
+                    headlineContentColor = TextH1,
+                    weekdayContentColor = TextH1,
+                    subheadContentColor = TextH1,
+                    navigationContentColor = TextH1,
+                    yearContentColor = TextH1,
+                    currentYearContentColor = TextH1,
+                    selectedYearContentColor = TextH1,
+                    selectedYearContainerColor = DarkPurple,
+                    dayContentColor = TextH1,
+                    selectedDayContentColor = TextH1,
+                    selectedDayContainerColor = DarkPurple,
+                    dayInSelectionRangeContentColor = TextH1,
+                    dayInSelectionRangeContainerColor = DarkPurple,
+                    dividerColor = DarkGray,
+                )
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ImageSection(
+    production: Production,
+    watchedStatus: Boolean,
+    onTitleChange: (String) -> Unit,
+    onReleaseDateChange: (LocalDate) -> Unit,
+    onGenreChange: (Genre) -> Unit,
+    onDurationOrPartsChange: (Int) -> Unit,
+    onImageSelected: (Uri) -> Unit,
+    scope: CoroutineScope,
+    hostState: SnackbarHostState,
+    scopeMessage: String,
+) {
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri ->
+            onImageSelected(uri ?: Uri.parse(production.imageUri))
+        },
+    )
+    var openDialog by remember { mutableStateOf(false) }
+    var dateState = rememberDatePickerState(
+        initialSelectedDateMillis = production.releaseDate.toMillis(),
+        yearRange = 1900..LocalDate.now().year + 2
+    )
+
     Box(
         modifier = Modifier
             .aspectRatio(1f)
             .fillMaxSize()
     ) {
+        DatePickerDialog(
+            openDialog = openDialog,
+            onOpenDialogChange = { newOpenDialog ->
+                openDialog = newOpenDialog
+            },
+            dateState = dateState,
+            onReleaseDateChange = { newReleaseDate ->
+                onReleaseDateChange(newReleaseDate)
+            }
+        )
         if (production.imageUri != null) {
             production.imageUri?.let { imageUri ->
                 AsyncImage(
@@ -233,6 +410,19 @@ fun ImageSection(production: Production) {
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
+                        .clickable {
+                            if (watchedStatus) {
+                                scope.launch {
+                                    hostState.showSnackbar(
+                                        message = scopeMessage,
+                                    )
+                                }
+                            } else {
+                                imagePicker.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+                        }
                 )
             }
             Box(
@@ -258,14 +448,28 @@ fun ImageSection(production: Production) {
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.Start
                 ) {
-                    Text(
-                        text = production.title.uppercase(),
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextH1,
-                        lineHeight = 32.sp,
+                    BasicTextField(
+                        enabled = !watchedStatus,
+                        value = production.title.uppercase(),
+                        onValueChange = onTitleChange,
+                        textStyle = TextStyle(
+                            color = TextH1,
+                            fontSize = 32.sp,
+                            lineHeight = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
                         modifier = Modifier
                             .fillMaxWidth(0.65f)
+                            .background(Color.Transparent)
+                            .clickable {
+                                if (watchedStatus) {
+                                    scope.launch {
+                                        hostState.showSnackbar(
+                                            message = scopeMessage,
+                                        )
+                                    }
+                                }
+                            }
                     )
                     Row(
                         modifier = Modifier
@@ -280,6 +484,17 @@ fun ImageSection(production: Production) {
                             color = TextH2,
                             modifier = Modifier
                                 .padding(end = 16.dp)
+                                .clickable {
+                                    if (watchedStatus) {
+                                        scope.launch {
+                                            hostState.showSnackbar(
+                                                message = scopeMessage,
+                                            )
+                                        }
+                                    } else {
+                                        openDialog = true
+                                    }
+                                }
                         )
                         Text(
                             text = production.genre.name.lowercase(),
@@ -292,7 +507,8 @@ fun ImageSection(production: Production) {
                         when (production) {
                             is Movie -> {
                                 Text(
-                                    text = "${production.durationInMinutes / 60}h ${production.durationInMinutes % 60}min",
+                                    text = "${production.durationInMinutes / 60}h " +
+                                            "${production.durationInMinutes % 60}min",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = TextH2
@@ -301,7 +517,8 @@ fun ImageSection(production: Production) {
 
                             is Series -> {
                                 Text(
-                                    text = "${production.parts.keys.size} seasons",
+                                    text = "${production.parts.keys.size} s." +
+                                            " ${production.parts.values.sumOf { it }} e.",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = TextH2
@@ -401,7 +618,7 @@ fun RateSection(
     onRatingChange: (Int) -> Unit,
     watchedStatus: Boolean,
 ) {
-    if(watchedStatus) {
+    if (watchedStatus) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

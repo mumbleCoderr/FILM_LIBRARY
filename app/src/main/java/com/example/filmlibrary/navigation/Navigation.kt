@@ -1,13 +1,11 @@
 package com.example.filmlibrary.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.filmlibrary.Screen
 import com.example.filmlibrary.ui.screen.AddProductionScreen
 import com.example.filmlibrary.ui.screen.HomeScreen
 import com.example.filmlibrary.ui.screen.ProductionDetailsScreen
@@ -25,16 +23,16 @@ fun Navigation() {
             HomeScreen(navController)
         }
         composable(
-            route = Screen.ProductionDetailsScreen.route + "/{productionTitle}",
+            route = Screen.ProductionDetailsScreen.route + "/{productionId}",
             arguments = listOf(
-                navArgument("productionTitle") {
+                navArgument("productionId") {
                     type = NavType.StringType
-                    defaultValue = "productionTitle"
+                    defaultValue = "productionId"
                     nullable = false
                 }
             )
         ) { entry ->
-            ProductionDetailsScreen(productionTitle = entry.arguments?.getString("productionTitle"))
+            ProductionDetailsScreen(productionId = entry.arguments?.getString("productionId")!!)
         }
         composable(
             route = Screen.AddProductionScreen.route,

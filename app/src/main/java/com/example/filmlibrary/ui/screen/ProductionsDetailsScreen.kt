@@ -1,5 +1,6 @@
 package com.example.filmlibrary.ui.screen
 
+import android.graphics.Movie
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -67,9 +68,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.filmlibrary.R
 import com.example.filmlibrary.data.Genre
-import com.example.filmlibrary.data.Movie
 import com.example.filmlibrary.data.Production
-import com.example.filmlibrary.data.Series
+import com.example.filmlibrary.data.ProductionType
 import com.example.filmlibrary.data.loadProductions
 import com.example.filmlibrary.data.saveProductions
 import com.example.filmlibrary.ui.theme.DarkGray
@@ -77,27 +77,25 @@ import com.example.filmlibrary.ui.theme.DarkPurple
 import com.example.filmlibrary.ui.theme.LightPurple
 import com.example.filmlibrary.ui.theme.TextH1
 import com.example.filmlibrary.ui.theme.TextH2
+import com.example.filmlibrary.utils.toLocalDate
+import com.example.filmlibrary.utils.toMillis
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 @Composable
-fun ProductionDetailsScreen(productionTitle: String?) {
+fun ProductionDetailsScreen(productionId: String) {
     val context = LocalContext.current
     var productions by remember {
         mutableStateOf(loadProductions(context) ?: emptyList())
     }
     val production = productions.find {
-        it.title == productionTitle
-    } ?: Production(
-        title = productionTitle ?: "add title",
-        genre = Genre.ALL,
-        releaseDate = LocalDate.now(),
-        comment = "leave a comment"
-    )
+        it.id == UUID.fromString(productionId)
+    } ?: Production()
     val genres = Genre.entries
     var comment by remember {
         mutableStateOf(production.comment)
@@ -123,195 +121,163 @@ fun ProductionDetailsScreen(productionTitle: String?) {
     var openChooseGenre by remember {
         mutableStateOf(false)
     }
+    var openTitleChangeSection by remember {
+        mutableStateOf(false)
+    }
+    var productionType by remember {
+        mutableStateOf(production.productionType)
+    }
     var durationOrParts by remember {
-        mutableStateOf(
-            when (production) {
-                is Movie -> production.durationInMinutes
-                is Series -> production.parts.keys.size
-                else -> 0
-            }
-        )
+        mutableStateOf(production.productionType.durationOrParts)
     }
 
     val scope = rememberCoroutineScope()
     val hostState = remember { SnackbarHostState() }
     val watchedScopeInfo = stringResource(id = R.string.watched_scope_info)
     val watchedScopeWarning = stringResource(id = R.string.watched_scope_warning)
+    val savedInfo = stringResource(id = R.string.save_button_info)
 
-    if (production == null) {
-        NotFound()
-    } else {
-        if (!watchedStatus) {
-            LaunchedEffect(watchedScopeInfo) {
-                hostState.showSnackbar(
-                    message = watchedScopeInfo,
-                )
-            }
+
+    if (!watchedStatus) {
+        LaunchedEffect(watchedScopeInfo) {
+            hostState.showSnackbar(
+                message = watchedScopeInfo,
+            )
         }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    if (openChooseGenre) {
+                        openChooseGenre = false
+                    }
+                })
+            }
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
-                .pointerInput(Unit) {
-                    detectTapGestures(onTap = {
-                        if (openChooseGenre) {
-                            openChooseGenre = false
-                        }
-                    })
-                }
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black),
-                            startY = 0f
-                        )
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black),
+                        startY = 0f
                     )
-                    .padding(bottom = 100.dp)
+                )
+                .padding(bottom = 100.dp)
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
             ) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                ) {
-                    item {
-                        ImageSection(
-                            production = production,
-                            watchedStatus = watchedStatus,
-                            title = title,
-                            onTitleChange = { newTitle ->
-                                title = newTitle
-                                production.title = newTitle
-                            },
-                            onReleaseDateChange = { newRelease ->
-                                releaseDate = newRelease
-                                production.releaseDate = newRelease
-                            },
-                            genre = genre,
-                            openChooseGenre = openChooseGenre,
-                            onOpenGenreChooseChange = { newOpenGenreChoose ->
-                                openChooseGenre = newOpenGenreChoose
-                            },
-                            onDurationOrPartsChange = { newDurationOrParts ->
-                                durationOrParts = newDurationOrParts
-                                when (production) {
-                                    is Movie -> production.durationInMinutes = newDurationOrParts
-                                    is Series -> production.parts[newDurationOrParts] = 0
-                                }
-                            },
-                            image = Uri.parse(imageUri),
-                            onImageSelected = { newUri ->
-                                imageUri = newUri.toString()
-                                production.imageUri = newUri.toString()
-                            },
-                            scope = scope,
-                            hostState = hostState,
-                            scopeMessage = watchedScopeWarning,
-                        )
-                    }
-                    item {
-                        GenreChooseSection(
-                            openGenreChoose = openChooseGenre,
-                            genres = genres,
-                            onGenreChange = { newGenre ->
-                                genre = newGenre
-                                production.genre = newGenre
-                            },
-                            watchedStatus = watchedStatus,
-                            actualGenre = genre,
-                        )
-                    }
-                    item {
-                        WatchedStatusSection(
-                            watchedStatus = watchedStatus,
-                            onWatchedStatusChange = { newStatus ->
-                                watchedStatus = newStatus
-                                production.isWatched = newStatus
-                            }
-                        )
-                    }
-                    item {
-                        CommentSection(
-                            watchedStatus = watchedStatus,
-                            comment = comment!!,
-                            onCommentChange = { newComment ->
-                                comment = newComment
-                                production.comment = newComment.trim()
-                            }
-                        )
-                    }
-                    item {
-                        RateSection(
-                            watchedStatus = watchedStatus,
-                            rating = rating!!,
-                            onRatingChange = { newRating ->
-                                rating = newRating
-                                production.rate = newRating
-                            }
-                        )
-                    }
+                item {
+                    ImageSection(
+                        production = production,
+                        productionType = productionType,
+                        durationOrParts = durationOrParts,
+                        watchedStatus = watchedStatus,
+                        title = title,
+                        openTitleChangeSection = openTitleChangeSection,
+                        onOpenTitleChangeSectionChange = { newOpenTitleChangeSection ->
+                            openTitleChangeSection = newOpenTitleChangeSection
+                        },
+                        onReleaseDateChange = { newRelease ->
+                            releaseDate = newRelease
+                            production.releaseDate = newRelease
+                        },
+                        genre = genre,
+                        openChooseGenre = openChooseGenre,
+                        onOpenGenreChooseChange = { newOpenGenreChoose ->
+                            openChooseGenre = newOpenGenreChoose
+                        },
+                        onDurationOrPartsChange = { newDurationOrParts ->
+                            durationOrParts = newDurationOrParts
+                            production.productionType.durationOrParts = newDurationOrParts
+                        },
+                        image = Uri.parse(imageUri),
+                        onImageSelected = { newUri ->
+                            imageUri = newUri.toString()
+                            production.imageUri = newUri.toString()
+                        },
+                        scope = scope,
+                        hostState = hostState,
+                        scopeMessage = watchedScopeWarning,
+                    )
+                }
+                item{
+                    TitleChangeSection(
+                        title = title,
+                        onTitleChange = { newTitle ->
+                            title = newTitle
+                            production.title = newTitle
+                        },
+                        watchedStatus = watchedStatus,
+                        openTitleChangeSection = openTitleChangeSection,
+                    )
+                }
+                item {
+                    GenreChooseSection(
+                        openGenreChoose = openChooseGenre,
+                        genres = genres,
+                        onGenreChange = { newGenre ->
+                            genre = newGenre
+                            production.genre = newGenre
+                        },
+                        watchedStatus = watchedStatus,
+                        actualGenre = genre,
+                    )
+                }
+                item {
+                    WatchedStatusSection(
+                        watchedStatus = watchedStatus,
+                        onWatchedStatusChange = { newStatus ->
+                            watchedStatus = newStatus
+                            production.isWatched = newStatus
+                        }
+                    )
+                }
+                item {
+                    CommentSection(
+                        watchedStatus = watchedStatus,
+                        comment = comment,
+                        onCommentChange = { newComment ->
+                            comment = newComment
+                            production.comment = newComment.trim()
+                        }
+                    )
+                }
+                item {
+                    RateSection(
+                        watchedStatus = watchedStatus,
+                        rating = rating,
+                        onRatingChange = { newRating ->
+                            rating = newRating
+                            production.rate = newRating
+                        }
+                    )
                 }
             }
-            SaveButtonSection(
-                onClick = { saveProductions(context, productions) },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-            )
         }
-        SnackbarHost(
-            hostState = hostState,
+        SaveButtonSection(
+            onClick = {
+                saveProductions(context, productions)
+                scope.launch {
+                    hostState.showSnackbar(
+                        message = savedInfo,
+                    )
+                }
+                      },
             modifier = Modifier
-                .padding(top = 32.dp)
+                .align(Alignment.BottomCenter)
         )
     }
-}
-
-@Composable
-fun NotFound() {
-    Column(
+    SnackbarHost(
+        hostState = hostState,
         modifier = Modifier
-            .fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(id = R.string.four),
-            fontSize = 128.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Red,
-            modifier = Modifier
-                .padding(bottom = 32.dp)
-        )
-        Text(
-            text = stringResource(id = R.string.zero),
-            fontSize = 128.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Red,
-            modifier = Modifier
-                .padding(bottom = 32.dp)
-        )
-        Text(
-            text = stringResource(id = R.string.four),
-            fontSize = 128.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Red,
-        )
-    }
-}
-
-fun Long?.toLocalDate(): LocalDate? {
-    return this?.let { millis ->
-        Instant.ofEpochMilli(millis)
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate()
-    }
-}
-
-fun LocalDate.toMillis(): Long {
-    return this.atStartOfDay(ZoneId.systemDefault())
-        .toInstant()
-        .toEpochMilli()
+            .padding(top = 32.dp)
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -389,13 +355,57 @@ fun DatePickerDialog(
     }
 }
 
+@Composable
+fun TitleChangeSection(
+    title: String,
+    onTitleChange: (String) -> Unit,
+    watchedStatus: Boolean,
+    openTitleChangeSection: Boolean,
+){
+    if (!watchedStatus && openTitleChangeSection) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            TextField(
+                value = title,
+                onValueChange = onTitleChange,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = DarkGray,
+                    unfocusedContainerColor = DarkGray,
+                    focusedTextColor = TextH2,
+                    unfocusedTextColor = TextH2,
+                    cursorColor = TextH2,
+                    focusedIndicatorColor = DarkGray,
+                    unfocusedIndicatorColor = DarkGray,
+                    disabledContainerColor = DarkGray,
+                    disabledTextColor = TextH2,
+                ),
+                textStyle = TextStyle(
+                    color = TextH1,
+                    fontSize = 22.sp,
+                    lineHeight = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(22.dp))
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageSection(
     production: Production,
+    productionType: ProductionType,
+    durationOrParts: Int,
     watchedStatus: Boolean,
     title: String,
-    onTitleChange: (String) -> Unit,
+    openTitleChangeSection: Boolean,
+    onOpenTitleChangeSectionChange: (Boolean) -> Unit,
     genre: Genre,
     openChooseGenre: Boolean,
     onOpenGenreChooseChange: (Boolean) -> Unit,
@@ -456,120 +466,6 @@ fun ImageSection(
                         }
                 )
             }
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black),
-                            startY = 0f
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .padding(start = 16.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 38.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.Start
-                ) {
-                    BasicTextField(
-                        enabled = !watchedStatus,
-                        value = title.uppercase(),
-                        onValueChange = onTitleChange,
-                        textStyle = TextStyle(
-                            color = TextH1,
-                            fontSize = 32.sp,
-                            lineHeight = 32.sp,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth(0.65f)
-                            .background(Color.Transparent)
-                            .clickable {
-                                if (watchedStatus) {
-                                    scope.launch {
-                                        hostState.showSnackbar(
-                                            message = scopeMessage,
-                                        )
-                                    }
-                                }
-                            }
-                    )
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Start,
-                    ) {
-                        Text(
-                            text = production.releaseDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextH2,
-                            modifier = Modifier
-                                .padding(end = 16.dp)
-                                .clickable {
-                                    if (watchedStatus) {
-                                        scope.launch {
-                                            hostState.showSnackbar(
-                                                message = scopeMessage,
-                                            )
-                                        }
-                                    } else {
-                                        openDialog = !openDialog
-                                    }
-                                }
-                        )
-                        Text(
-                            text = genre.name.lowercase(),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextH2,
-                            modifier = Modifier
-                                .padding(end = 16.dp)
-                                .clickable {
-                                    if (watchedStatus) {
-                                        scope.launch {
-                                            hostState.showSnackbar(
-                                                message = scopeMessage,
-                                            )
-                                        }
-                                    } else {
-                                        onOpenGenreChooseChange(!openChooseGenre)
-                                    }
-                                }
-                        )
-                        when (production) {
-                            is Movie -> {
-                                Text(
-                                    text = "${production.durationInMinutes / 60}h " +
-                                            "${production.durationInMinutes % 60}min",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextH2
-                                )
-                            }
-
-                            is Series -> {
-                                Text(
-                                    text = "${production.parts.keys.size} s." +
-                                            " ${production.parts.values.sumOf { it }} e.",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextH2
-                                )
-                            }
-                        }
-                    }
-                }
-            }
         } else {
             Box(
                 modifier = Modifier
@@ -579,7 +475,17 @@ fun ImageSection(
                         color = TextH2,
                     )
                     .clickable {
-                        //TO DO: DODANIE ZDJECIA
+                        if (watchedStatus) {
+                            scope.launch {
+                                hostState.showSnackbar(
+                                    message = scopeMessage,
+                                )
+                            }
+                        } else {
+                            imagePicker.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -592,6 +498,99 @@ fun ImageSection(
                 )
             }
         }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color.Transparent, Color.Black),
+                        startY = 0f
+                    )
+                )
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(start = 16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 38.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    text = title.uppercase(),
+                    color = TextH1,
+                    fontSize = 32.sp,
+                    lineHeight = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .fillMaxWidth(0.65f)
+                        .clickable {
+                            onOpenTitleChangeSectionChange(!openTitleChangeSection)
+                        }
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Start,
+                ) {
+                    Text(
+                        text = production.releaseDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextH2,
+                        modifier = Modifier
+                            .padding(end = 16.dp)
+                            .clickable {
+                                if (watchedStatus) {
+                                    scope.launch {
+                                        hostState.showSnackbar(
+                                            message = scopeMessage,
+                                        )
+                                    }
+                                } else {
+                                    openDialog = !openDialog
+                                }
+                            }
+                    )
+                    Text(
+                        text = genre.name.lowercase(),
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextH2,
+                        modifier = Modifier
+                            .padding(end = 16.dp)
+                            .clickable {
+                                if (watchedStatus) {
+                                    scope.launch {
+                                        hostState.showSnackbar(
+                                            message = scopeMessage,
+                                        )
+                                    }
+                                } else {
+                                    onOpenGenreChooseChange(!openChooseGenre)
+                                }
+                            }
+                    )
+                    Text(
+                        text = if (productionType == ProductionType.MOVIE) {
+                            "${durationOrParts / 60}h ${durationOrParts % 60}min"
+                        } else {
+                            "$durationOrParts episodes"
+                        },
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextH2
+                    )
+                }
+            }
+        }
+
     }
 }
 

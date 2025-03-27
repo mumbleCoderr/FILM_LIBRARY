@@ -1,7 +1,5 @@
 package com.example.filmlibrary.ui.screen
 
-import android.content.Context
-import android.hardware.lights.Light
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,32 +13,18 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredWidth
-import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -57,26 +41,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
 import coil.compose.AsyncImage
 import com.example.filmlibrary.R
-import com.example.filmlibrary.Screen
+import com.example.filmlibrary.navigation.Screen
 import com.example.filmlibrary.data.Genre
-import com.example.filmlibrary.data.Movie
 import com.example.filmlibrary.data.Production
-import com.example.filmlibrary.data.Series
 import com.example.filmlibrary.data.loadProductions
-import com.example.filmlibrary.data.saveProductions
-import com.example.filmlibrary.ui.theme.DarkGray
 import com.example.filmlibrary.ui.theme.DarkPink
 import com.example.filmlibrary.ui.theme.DarkPurple
-import com.example.filmlibrary.ui.theme.LightPink
 import com.example.filmlibrary.ui.theme.LightPurple
 import com.example.filmlibrary.ui.theme.TextH1
 import com.example.filmlibrary.ui.theme.TextH2
@@ -84,7 +59,6 @@ import com.example.filmlibrary.utils.filterProductionsByGenre
 import com.example.filmlibrary.utils.filterProductionsByGenreAndWatchedStatus
 import com.example.filmlibrary.utils.filterProductionsByTitle
 import com.example.filmlibrary.utils.sortProductions
-import java.time.LocalDate
 
 
 @Composable
@@ -361,7 +335,7 @@ fun ProductionItem(
                         )
                     )
                     .clickable {
-                        navController.navigate(Screen.ProductionDetailsScreen.route + "/${production.title}")
+                        navController.navigate(Screen.ProductionDetailsScreen.route + "/${production.id}")
                     }
             )
             Text(

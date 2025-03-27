@@ -12,42 +12,34 @@ import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.io.Serializable
 import java.time.LocalDate
+import java.util.UUID
 
 enum class Genre {
-    ALL, DRAMA, COMEDY, ACTION, THRILLER, HORROR, DOCUMENTARY, ROMANCE, FANTASY
+    ALL, DRAMA, COMEDY, ACTION, THRILLER, HORROR, DOCUMENTARY, ROMANCE, FANTASY,
+}
+enum class ProductionType(var durationOrParts: Int){
+    MOVIE(0), SERIES(0);
+
+    fun withDurationOrParts(value: Int): ProductionType {
+        return when (this) {
+            MOVIE -> MOVIE.apply { durationOrParts = value }
+            SERIES -> SERIES.apply { durationOrParts = value }
+        }
+    }
 }
 
-open class Production(
-    var title: String,
-    var genre: Genre,
-    var releaseDate: LocalDate,
+
+data class Production(
+    val id: UUID = UUID.randomUUID(),
+    var title: String = "Add title",
+    var genre: Genre = Genre.ALL,
+    var releaseDate: LocalDate = LocalDate.now(),
     var isWatched: Boolean = false,
-    var comment: String? = null,
-    var rate: Int? = null,
+    var comment: String = "Leave a comment",
+    var rate: Int = 0,
     var imageUri: String? = null,
+    var productionType: ProductionType = ProductionType.MOVIE,
 ): Serializable{
-    init {
-        if (rate != null && (rate !in 1..5)) {
-            throw IllegalArgumentException("rate has to be in 1..5")
-        }
-
-        if (comment != null && comment!!.isBlank()) {
-            throw IllegalArgumentException("can't set empty comment")
-        }
-    }
-
-    open fun deepCopy(): Production {
-        return Production(
-            title = this.title,
-            genre = this.genre,
-            releaseDate = this.releaseDate,
-            isWatched = this.isWatched,
-            comment = this.comment,
-            rate = this.rate,
-            imageUri = this.imageUri
-        )
-    }
-
     override fun toString(): String {
         return """
                         Production: ${this.javaClass.simpleName}
@@ -58,66 +50,6 @@ open class Production(
                         comment: $comment
                         rate: $rate
         """.trimIndent()
-    }
-}
-
-class Movie(
-    title: String,
-    genre: Genre,
-    releaseDate: LocalDate,
-    isWatched: Boolean = false,
-    comment: String? = null,
-    rate: Int? = null,
-    imageUri: String? = null,
-    var durationInMinutes: Int
-) : Production(title, genre, releaseDate, isWatched, comment, rate, imageUri){
-
-    override fun deepCopy(): Production {
-        return Movie(
-            title = this.title,
-            genre = this.genre,
-            releaseDate = this.releaseDate,
-            isWatched = this.isWatched,
-            comment = this.comment,
-            rate = this.rate,
-            imageUri = this.imageUri,
-            durationInMinutes = this.durationInMinutes
-        )
-    }
-
-    override fun toString(): String {
-        return super.toString() +
-                "duration: ${durationInMinutes/60} ${durationInMinutes%60}"
-    }
-}
-
-class Series(
-    title: String,
-    genre: Genre,
-    releaseDate: LocalDate,
-    isWatched: Boolean = false,
-    comment: String? = null,
-    rate: Int? = null,
-    imageUri: String? = null,
-    var parts: MutableMap<Int, Int>
-): Production(title, genre, releaseDate, isWatched, comment, rate, imageUri){
-
-    override fun deepCopy(): Production {
-        return Series(
-            title = this.title,
-            genre = this.genre,
-            releaseDate = this.releaseDate,
-            isWatched = this.isWatched,
-            comment = this.comment,
-            rate = this.rate,
-            imageUri = this.imageUri,
-            parts = this.parts.toMutableMap()
-        )
-    }
-
-    override fun toString(): String {
-        return super.toString() +
-                "parts: ${parts.entries.joinToString {"${it.key}:${it.value}"}}"
     }
 }
 

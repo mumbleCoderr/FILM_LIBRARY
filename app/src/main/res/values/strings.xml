@@ -19,6 +19,8 @@
     <string name="watched_scope_info">You can change productions image or details by clicking on it</string>
     <string name="calendar_confirm">CONFIRM</string>
     <string name="calendar_dismiss">DISMISS</string>
+    <string name="change_title_textfield_text">Insert new Title</string>
+    <string name="save_button_info">Changes Saved</string>
     <string-array name="isWatched">
         <item>ALL</item>
         <item>WATCHED</item>

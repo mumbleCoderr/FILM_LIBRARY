@@ -23,6 +23,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -74,15 +77,12 @@ fun HomeScreen(navController: NavController) {
     var input by remember {
         mutableStateOf("")
     }
-
     var selectedGenreFilter = remember {
         mutableStateOf(0)
     }
-
     var selectedWatchedStatusFilter = remember {
         mutableStateOf(0)
     }
-
     var selectedSorting = remember {
         mutableStateOf(0)
     }
@@ -91,18 +91,15 @@ fun HomeScreen(navController: NavController) {
         productions,
         input,
     )
-
     val productionsFilteredByGenre: List<Production> = filterProductionsByGenre(
         productions,
         genres,
         selectedGenreFilter,
     )
-
     val productionsFilteredByGenreAndWatchedStatus = filterProductionsByGenreAndWatchedStatus(
         productionsFilteredByGenre,
         selectedWatchedStatusFilter,
     )
-
     val finalFilteredSortedProductions = sortProductions(
         productionsFilteredByGenreAndWatchedStatus,
         selectedSorting,
@@ -124,15 +121,15 @@ fun HomeScreen(navController: NavController) {
                 )
         ) {
             TopBar()
-            SearchBar(input, onInputChange = { input = it })
-            FilterChips(
-                genres,
-                watchedStatusEntries,
-                sortingEntries,
-                selectedGenreFilter,
-                selectedWatchedStatusFilter,
-                selectedSorting
-            )
+                SearchBar(input, onInputChange = { input = it })
+                FilterChips(
+                    genres,
+                    watchedStatusEntries,
+                    sortingEntries,
+                    selectedGenreFilter,
+                    selectedWatchedStatusFilter,
+                    selectedSorting
+                )
             if (input.isNotBlank()) ProductionList(filteredProductionsByTitle, navController)
             else ProductionList(finalFilteredSortedProductions, navController)
         }
@@ -335,7 +332,7 @@ fun ProductionItem(
                         )
                     )
                     .clickable {
-                        navController.navigate(Screen.ProductionDetailsScreen.route + "/${production.id}")
+                        navController.navigate(Screen.ProductionDetailsScreen.route + "?productionId=${production.id}")
                     }
             )
             Text(
@@ -362,7 +359,7 @@ fun ProductionItem(
                         shape = RoundedCornerShape(22.dp)
                     )
                     .clickable {
-                        navController.navigate(Screen.AddProductionScreen.route)
+                        navController.navigate(Screen.ProductionDetailsScreen.route)
                     }
             ) {
                 Icon(

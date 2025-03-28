@@ -27,6 +27,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.StarRate
@@ -48,6 +50,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -60,9 +63,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -88,14 +94,20 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 @Composable
-fun ProductionDetailsScreen(productionId: String) {
+fun ProductionDetailsScreen(productionId: String?) {
     val context = LocalContext.current
     var productions by remember {
         mutableStateOf(loadProductions(context) ?: emptyList())
     }
-    val production = productions.find {
-        it.id == UUID.fromString(productionId)
-    } ?: Production()
+
+    val production = if (productionId != null) {
+        productions.find {
+            it.id == UUID.fromString(productionId)
+        } ?: Production()
+    } else {
+        Production()
+    }
+
     val genres = Genre.entries
     var comment by remember {
         mutableStateOf(production.comment)
@@ -107,7 +119,7 @@ fun ProductionDetailsScreen(productionId: String) {
         mutableStateOf(production.isWatched)
     }
     var imageUri by remember {
-        mutableStateOf(production.imageUri)
+        mutableStateOf(production.imageUri.let { Uri.parse(it) })
     }
     var title by remember {
         mutableStateOf(production.title)
@@ -130,9 +142,13 @@ fun ProductionDetailsScreen(productionId: String) {
     var durationOrParts by remember {
         mutableStateOf(production.productionType.durationOrParts)
     }
+    var openDurationOrPartsChangeSection by remember {
+        mutableStateOf(false)
+    }
 
     val scope = rememberCoroutineScope()
     val hostState = remember { SnackbarHostState() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     val watchedScopeInfo = stringResource(id = R.string.watched_scope_info)
     val watchedScopeWarning = stringResource(id = R.string.watched_scope_warning)
     val savedInfo = stringResource(id = R.string.save_button_info)
@@ -192,13 +208,13 @@ fun ProductionDetailsScreen(productionId: String) {
                         onOpenGenreChooseChange = { newOpenGenreChoose ->
                             openChooseGenre = newOpenGenreChoose
                         },
-                        onDurationOrPartsChange = { newDurationOrParts ->
-                            durationOrParts = newDurationOrParts
-                            production.productionType.durationOrParts = newDurationOrParts
+                        openDurationOrPartsChangeSection = openDurationOrPartsChangeSection,
+                        onOpenDurationOrPartsChangeSection = { newOpenDurationOrPartsChangeSection ->
+                            openDurationOrPartsChangeSection = newOpenDurationOrPartsChangeSection
                         },
-                        image = Uri.parse(imageUri),
+                        image = imageUri,
                         onImageSelected = { newUri ->
-                            imageUri = newUri.toString()
+                            imageUri = newUri
                             production.imageUri = newUri.toString()
                         },
                         scope = scope,
@@ -206,7 +222,7 @@ fun ProductionDetailsScreen(productionId: String) {
                         scopeMessage = watchedScopeWarning,
                     )
                 }
-                item{
+                item {
                     TitleChangeSection(
                         title = title,
                         onTitleChange = { newTitle ->
@@ -215,6 +231,23 @@ fun ProductionDetailsScreen(productionId: String) {
                         },
                         watchedStatus = watchedStatus,
                         openTitleChangeSection = openTitleChangeSection,
+                        keyboardController = keyboardController!!,
+                    )
+                }
+                item {
+                    DurationOrPartsChangeSection(
+                        productionType = productionType,
+                        watchedStatus = watchedStatus,
+                        openDurationOrPartsChangeSection = openDurationOrPartsChangeSection,
+                        durationOrParts = durationOrParts,
+                        onDurationOrPartsChange = { newDurationOrParts ->
+                            val validatedNewDurationOrParts = newDurationOrParts.toIntOrNull() ?: 0
+                            durationOrParts = validatedNewDurationOrParts
+                            production.productionType.withDurationOrParts(
+                                validatedNewDurationOrParts
+                            )
+                        },
+                        keyboardController = keyboardController!!,
                     )
                 }
                 item {
@@ -240,6 +273,7 @@ fun ProductionDetailsScreen(productionId: String) {
                 }
                 item {
                     CommentSection(
+                        keyboardController = keyboardController!!,
                         watchedStatus = watchedStatus,
                         comment = comment,
                         onCommentChange = { newComment ->
@@ -268,7 +302,7 @@ fun ProductionDetailsScreen(productionId: String) {
                         message = savedInfo,
                     )
                 }
-                      },
+            },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
         )
@@ -356,12 +390,80 @@ fun DatePickerDialog(
 }
 
 @Composable
+fun DurationOrPartsChangeSection(
+    productionType: ProductionType,
+    openDurationOrPartsChangeSection: Boolean,
+    durationOrParts: Int,
+    onDurationOrPartsChange: (String) -> Unit,
+    watchedStatus: Boolean,
+    keyboardController: SoftwareKeyboardController,
+) {
+    if (openDurationOrPartsChangeSection && !watchedStatus) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = 16.dp,
+                )
+        ) {
+            TextField(
+                value = durationOrParts.takeIf { it > 0 }?.toString() ?: "",
+                placeholder = {
+                    Text(
+                        text = if (productionType == ProductionType.MOVIE) {
+                            stringResource(id = R.string.duration_change_placeholder)
+                        } else {
+                            stringResource(id = R.string.parts_change_placeholder)
+                        },
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextH1
+                    )
+                },
+                onValueChange = onDurationOrPartsChange,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = DarkGray,
+                    unfocusedContainerColor = DarkGray,
+                    focusedTextColor = TextH2,
+                    unfocusedTextColor = TextH2,
+                    cursorColor = TextH2,
+                    focusedIndicatorColor = DarkGray,
+                    unfocusedIndicatorColor = DarkGray,
+                    disabledContainerColor = DarkGray,
+                    disabledTextColor = TextH2,
+                ),
+                textStyle = TextStyle(
+                    color = TextH1,
+                    fontSize = 22.sp,
+                    lineHeight = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(22.dp)),
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                        imeAction = ImeAction.Done
+                        ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        keyboardController?.hide()
+                    }
+                )
+            )
+        }
+    }
+}
+
+@Composable
 fun TitleChangeSection(
     title: String,
     onTitleChange: (String) -> Unit,
     watchedStatus: Boolean,
     openTitleChangeSection: Boolean,
-){
+    keyboardController: SoftwareKeyboardController,
+) {
     if (!watchedStatus && openTitleChangeSection) {
         Row(
             modifier = Modifier
@@ -390,7 +492,15 @@ fun TitleChangeSection(
                 ),
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(22.dp))
+                    .clip(RoundedCornerShape(22.dp)),
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    imeAction = ImeAction.Done
+                ),
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        keyboardController?.hide()
+                    }
+                )
             )
         }
     }
@@ -410,7 +520,8 @@ fun ImageSection(
     openChooseGenre: Boolean,
     onOpenGenreChooseChange: (Boolean) -> Unit,
     onReleaseDateChange: (LocalDate) -> Unit,
-    onDurationOrPartsChange: (Int) -> Unit,
+    openDurationOrPartsChangeSection: Boolean,
+    onOpenDurationOrPartsChangeSection: (Boolean) -> Unit,
     image: Uri,
     onImageSelected: (Uri) -> Unit,
     scope: CoroutineScope,
@@ -443,29 +554,27 @@ fun ImageSection(
                 onReleaseDateChange(newReleaseDate)
             }
         )
-        if (production.imageUri != null) {
-            production.imageUri?.let { imageUri ->
-                AsyncImage(
-                    model = imageUri,
-                    contentDescription = production.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clickable {
-                            if (watchedStatus) {
-                                scope.launch {
-                                    hostState.showSnackbar(
-                                        message = scopeMessage,
-                                    )
-                                }
-                            } else {
-                                imagePicker.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+        if (production.imageUri.isNotBlank()) {
+            AsyncImage(
+                model = image,
+                contentDescription = production.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable {
+                        if (watchedStatus) {
+                            scope.launch {
+                                hostState.showSnackbar(
+                                    message = scopeMessage,
                                 )
                             }
+                        } else {
+                            imagePicker.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
                         }
-                )
-            }
+                    }
+            )
         } else {
             Box(
                 modifier = Modifier
@@ -585,7 +694,19 @@ fun ImageSection(
                         },
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextH2
+                        color = TextH2,
+                        modifier = Modifier
+                            .clickable {
+                                if (watchedStatus) {
+                                    scope.launch {
+                                        hostState.showSnackbar(
+                                            message = scopeMessage,
+                                        )
+                                    }
+                                } else {
+                                    onOpenDurationOrPartsChangeSection(!openDurationOrPartsChangeSection)
+                                }
+                            }
                     )
                 }
             }
@@ -663,6 +784,7 @@ fun CommentSection(
     comment: String,
     onCommentChange: (String) -> Unit,
     watchedStatus: Boolean,
+    keyboardController: SoftwareKeyboardController
 ) {
     if (watchedStatus) {
         Column(
@@ -709,7 +831,15 @@ fun CommentSection(
                             disabledTextColor = TextH2,
                         ),
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxSize(),
+                        keyboardOptions = KeyboardOptions.Default.copy(
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                keyboardController?.hide()
+                            }
+                        )
                     )
                 }
             }

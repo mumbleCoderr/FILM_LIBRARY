@@ -1,10 +1,16 @@
 package com.example.filmlibrary.ui.screen
 
+import android.annotation.SuppressLint
+import android.content.Context
+import android.graphics.ImageDecoder
 import android.graphics.Movie
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -60,6 +66,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -83,6 +90,7 @@ import com.example.filmlibrary.ui.theme.DarkPurple
 import com.example.filmlibrary.ui.theme.LightPurple
 import com.example.filmlibrary.ui.theme.TextH1
 import com.example.filmlibrary.ui.theme.TextH2
+import com.example.filmlibrary.utils.byteArrayToBitmap
 import com.example.filmlibrary.utils.toLocalDate
 import com.example.filmlibrary.utils.toMillis
 import kotlinx.coroutines.CoroutineScope
@@ -93,19 +101,22 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
+@SuppressLint("MutableCollectionMutableState")
 @Composable
 fun ProductionDetailsScreen(productionId: String?) {
     val context = LocalContext.current
     var productions by remember {
-        mutableStateOf(loadProductions(context) ?: emptyList())
+        mutableStateOf(mutableListOf<Production>().apply {
+            addAll(loadProductions(context) ?: emptyList())
+        })
     }
 
-    val production = if (productionId != null) {
-        productions.find {
-            it.id == UUID.fromString(productionId)
-        } ?: Production()
-    } else {
-        Production()
+    val production = remember(productionId) {
+        if (productionId != null) {
+            productions.find { it.id == UUID.fromString(productionId) } ?: Production()
+        } else {
+            Production()
+        }
     }
 
     val genres = Genre.entries
@@ -118,8 +129,8 @@ fun ProductionDetailsScreen(productionId: String?) {
     var watchedStatus by remember {
         mutableStateOf(production.isWatched)
     }
-    var imageUri by remember {
-        mutableStateOf(production.imageUri.let { Uri.parse(it) })
+    var imageByteArray by remember {
+        mutableStateOf(production.imageByteArray)
     }
     var title by remember {
         mutableStateOf(production.title)
@@ -190,6 +201,7 @@ fun ProductionDetailsScreen(productionId: String?) {
             ) {
                 item {
                     ImageSection(
+                        context = context,
                         production = production,
                         productionType = productionType,
                         durationOrParts = durationOrParts,
@@ -199,6 +211,7 @@ fun ProductionDetailsScreen(productionId: String?) {
                         onOpenTitleChangeSectionChange = { newOpenTitleChangeSection ->
                             openTitleChangeSection = newOpenTitleChangeSection
                         },
+                        releaseDate = releaseDate,
                         onReleaseDateChange = { newRelease ->
                             releaseDate = newRelease
                             production.releaseDate = newRelease
@@ -212,10 +225,10 @@ fun ProductionDetailsScreen(productionId: String?) {
                         onOpenDurationOrPartsChangeSection = { newOpenDurationOrPartsChangeSection ->
                             openDurationOrPartsChangeSection = newOpenDurationOrPartsChangeSection
                         },
-                        image = imageUri,
-                        onImageSelected = { newUri ->
-                            imageUri = newUri
-                            production.imageUri = newUri.toString()
+                        image = imageByteArray,
+                        onImageSelected = { newImageByteArray ->
+                            imageByteArray = newImageByteArray
+                            production.imageByteArray = newImageByteArray
                         },
                         scope = scope,
                         hostState = hostState,
@@ -226,8 +239,8 @@ fun ProductionDetailsScreen(productionId: String?) {
                     TitleChangeSection(
                         title = title,
                         onTitleChange = { newTitle ->
-                            title = newTitle
-                            production.title = newTitle
+                            title = newTitle.trim()
+                            production.title = newTitle.trim()
                         },
                         watchedStatus = watchedStatus,
                         openTitleChangeSection = openTitleChangeSection,
@@ -296,6 +309,7 @@ fun ProductionDetailsScreen(productionId: String?) {
         }
         SaveButtonSection(
             onClick = {
+                if(production !in productions) productions.add(production)
                 saveProductions(context, productions)
                 scope.launch {
                     hostState.showSnackbar(
@@ -448,7 +462,7 @@ fun DurationOrPartsChangeSection(
                         ),
                 keyboardActions = KeyboardActions(
                     onDone = {
-                        keyboardController?.hide()
+                        keyboardController.hide()
                     }
                 )
             )
@@ -498,7 +512,7 @@ fun TitleChangeSection(
                 ),
                 keyboardActions = KeyboardActions(
                     onDone = {
-                        keyboardController?.hide()
+                        keyboardController.hide()
                     }
                 )
             )
@@ -509,6 +523,7 @@ fun TitleChangeSection(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageSection(
+    context: Context,
     production: Production,
     productionType: ProductionType,
     durationOrParts: Int,
@@ -519,11 +534,12 @@ fun ImageSection(
     genre: Genre,
     openChooseGenre: Boolean,
     onOpenGenreChooseChange: (Boolean) -> Unit,
+    releaseDate: LocalDate,
     onReleaseDateChange: (LocalDate) -> Unit,
     openDurationOrPartsChangeSection: Boolean,
     onOpenDurationOrPartsChangeSection: (Boolean) -> Unit,
-    image: Uri,
-    onImageSelected: (Uri) -> Unit,
+    image: ByteArray,
+    onImageSelected: (ByteArray) -> Unit,
     scope: CoroutineScope,
     hostState: SnackbarHostState,
     scopeMessage: String,
@@ -531,7 +547,14 @@ fun ImageSection(
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri ->
-            onImageSelected(uri ?: image)
+            if (uri != null) {
+                val imageByteArray = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    inputStream.readBytes()
+                }
+                if (imageByteArray != null) {
+                    onImageSelected(imageByteArray)
+                }
+            }
         },
     )
     var openDialog by remember { mutableStateOf(false) }
@@ -554,9 +577,9 @@ fun ImageSection(
                 onReleaseDateChange(newReleaseDate)
             }
         )
-        if (production.imageUri.isNotBlank()) {
-            AsyncImage(
-                model = image,
+        if (image.isNotEmpty()) {
+            Image(
+                bitmap = byteArrayToBitmap(image).asImageBitmap(),
                 contentDescription = production.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -649,7 +672,7 @@ fun ImageSection(
                     horizontalArrangement = Arrangement.Start,
                 ) {
                     Text(
-                        text = production.releaseDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
+                        text = releaseDate.format(DateTimeFormatter.ofPattern("dd.MM.yyyy")),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextH2,

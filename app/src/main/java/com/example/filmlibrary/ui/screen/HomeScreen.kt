@@ -1,5 +1,7 @@
 package com.example.filmlibrary.ui.screen
 
+import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,6 +41,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -52,24 +55,31 @@ import com.example.filmlibrary.R
 import com.example.filmlibrary.navigation.Screen
 import com.example.filmlibrary.data.Genre
 import com.example.filmlibrary.data.Production
+import com.example.filmlibrary.data.ProductionType
 import com.example.filmlibrary.data.loadProductions
+import com.example.filmlibrary.data.saveProductions
 import com.example.filmlibrary.ui.theme.DarkPink
 import com.example.filmlibrary.ui.theme.DarkPurple
 import com.example.filmlibrary.ui.theme.LightPurple
 import com.example.filmlibrary.ui.theme.TextH1
 import com.example.filmlibrary.ui.theme.TextH2
+import com.example.filmlibrary.utils.byteArrayToBitmap
 import com.example.filmlibrary.utils.filterProductionsByGenre
 import com.example.filmlibrary.utils.filterProductionsByGenreAndWatchedStatus
 import com.example.filmlibrary.utils.filterProductionsByTitle
 import com.example.filmlibrary.utils.sortProductions
+import com.example.filmlibrary.utils.uriToByteArray
+import java.time.LocalDate
 
 
 @Composable
 fun HomeScreen(navController: NavController) {
     val context = LocalContext.current
-    var productions by remember {
+
+    val productions by remember {
         mutableStateOf(loadProductions(context) ?: emptyList())
     }
+
     val genres = Genre.entries
     val watchedStatusEntries = context.resources.getStringArray(R.array.isWatched).toList()
     val sortingEntries = context.resources.getStringArray(R.array.sorting).toList()
@@ -314,9 +324,9 @@ fun ProductionItem(
             .fillMaxSize()
     ) {
         if (production != null) {
-            production.imageUri?.let { imageUri ->
-                AsyncImage(
-                    model = imageUri,
+            if (production.imageByteArray.isNotEmpty()) {
+                Image(
+                    bitmap = byteArrayToBitmap(production.imageByteArray).asImageBitmap(),
                     contentDescription = production.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()

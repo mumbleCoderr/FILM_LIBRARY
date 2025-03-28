@@ -37,7 +37,7 @@ data class Production(
     var isWatched: Boolean = false,
     var comment: String = "Leave a comment",
     var rate: Int = 0,
-    var imageUri: String = "",
+    var imageByteArray: ByteArray = byteArrayOf(),
     var productionType: ProductionType = ProductionType.MOVIE,
 ): Serializable{
     override fun toString(): String {

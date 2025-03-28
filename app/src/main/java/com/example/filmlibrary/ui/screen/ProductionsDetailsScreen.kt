@@ -130,6 +130,9 @@ fun ProductionDetailsScreen(productionId: String) {
     var durationOrParts by remember {
         mutableStateOf(production.productionType.durationOrParts)
     }
+    var openDurationOrPartsChangeSection by remember {
+        mutableStateOf(false)
+    }
 
     val scope = rememberCoroutineScope()
     val hostState = remember { SnackbarHostState() }
@@ -192,9 +195,9 @@ fun ProductionDetailsScreen(productionId: String) {
                         onOpenGenreChooseChange = { newOpenGenreChoose ->
                             openChooseGenre = newOpenGenreChoose
                         },
-                        onDurationOrPartsChange = { newDurationOrParts ->
-                            durationOrParts = newDurationOrParts
-                            production.productionType.durationOrParts = newDurationOrParts
+                        openDurationOrPartsChangeSection = openDurationOrPartsChangeSection,
+                        onOpenDurationOrPartsChangeSection = { newOpenDurationOrPartsChangeSection ->
+                            openDurationOrPartsChangeSection = newOpenDurationOrPartsChangeSection
                         },
                         image = Uri.parse(imageUri),
                         onImageSelected = { newUri ->
@@ -206,7 +209,7 @@ fun ProductionDetailsScreen(productionId: String) {
                         scopeMessage = watchedScopeWarning,
                     )
                 }
-                item{
+                item {
                     TitleChangeSection(
                         title = title,
                         onTitleChange = { newTitle ->
@@ -215,6 +218,21 @@ fun ProductionDetailsScreen(productionId: String) {
                         },
                         watchedStatus = watchedStatus,
                         openTitleChangeSection = openTitleChangeSection,
+                    )
+                }
+                item {
+                    DurationOrPartsChangeSection(
+                        productionType = productionType,
+                        watchedStatus = watchedStatus,
+                        openDurationOrPartsChangeSection = openDurationOrPartsChangeSection,
+                        durationOrParts = durationOrParts,
+                        onDurationOrPartsChange = { newDurationOrParts ->
+                            val validatedNewDurationOrParts = newDurationOrParts.toIntOrNull() ?: 0
+                            durationOrParts = validatedNewDurationOrParts
+                            production.productionType.withDurationOrParts(
+                                validatedNewDurationOrParts
+                            )
+                        }
                     )
                 }
                 item {
@@ -268,7 +286,7 @@ fun ProductionDetailsScreen(productionId: String) {
                         message = savedInfo,
                     )
                 }
-                      },
+            },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
         )
@@ -356,12 +374,70 @@ fun DatePickerDialog(
 }
 
 @Composable
+fun DurationOrPartsChangeSection(
+    productionType: ProductionType,
+    openDurationOrPartsChangeSection: Boolean,
+    durationOrParts: Int,
+    onDurationOrPartsChange: (String) -> Unit,
+    watchedStatus: Boolean,
+) {
+    if (openDurationOrPartsChangeSection && !watchedStatus) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = 16.dp,
+                )
+        ) {
+            TextField(
+                value = durationOrParts.takeIf { it > 0 }?.toString() ?: "",
+                placeholder = {
+                    Text(
+                        text = if(productionType == ProductionType.MOVIE) {
+                            stringResource(id = R.string.duration_change_placeholder)
+                        }else{
+                            stringResource(id = R.string.parts_change_placeholder)
+                        },
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextH1
+                    )
+                },
+                onValueChange = onDurationOrPartsChange,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = DarkGray,
+                    unfocusedContainerColor = DarkGray,
+                    focusedTextColor = TextH2,
+                    unfocusedTextColor = TextH2,
+                    cursorColor = TextH2,
+                    focusedIndicatorColor = DarkGray,
+                    unfocusedIndicatorColor = DarkGray,
+                    disabledContainerColor = DarkGray,
+                    disabledTextColor = TextH2,
+                ),
+                textStyle = TextStyle(
+                    color = TextH1,
+                    fontSize = 22.sp,
+                    lineHeight = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(22.dp))
+            )
+        }
+    }
+}
+
+@Composable
 fun TitleChangeSection(
     title: String,
     onTitleChange: (String) -> Unit,
     watchedStatus: Boolean,
     openTitleChangeSection: Boolean,
-){
+) {
     if (!watchedStatus && openTitleChangeSection) {
         Row(
             modifier = Modifier
@@ -410,7 +486,8 @@ fun ImageSection(
     openChooseGenre: Boolean,
     onOpenGenreChooseChange: (Boolean) -> Unit,
     onReleaseDateChange: (LocalDate) -> Unit,
-    onDurationOrPartsChange: (Int) -> Unit,
+    openDurationOrPartsChangeSection: Boolean,
+    onOpenDurationOrPartsChangeSection: (Boolean) -> Unit,
     image: Uri,
     onImageSelected: (Uri) -> Unit,
     scope: CoroutineScope,
@@ -585,7 +662,19 @@ fun ImageSection(
                         },
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextH2
+                        color = TextH2,
+                        modifier = Modifier
+                            .clickable {
+                                if (watchedStatus) {
+                                    scope.launch {
+                                        hostState.showSnackbar(
+                                            message = scopeMessage,
+                                        )
+                                    }
+                                } else {
+                                    onOpenDurationOrPartsChangeSection(!openDurationOrPartsChangeSection)
+                                }
+                            }
                     )
                 }
             }

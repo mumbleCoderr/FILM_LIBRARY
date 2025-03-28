@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">FILM LIBRARY</string>
     <string name="title1">Welcome in Film Library</string>
-    <string name="title2">track your premiers and favourite ones</string>
+    <string name="title2">track your premiers and save your feelings</string>
     <string name="list">Your repository</string>
     <string name="production_null">UNKNOWN</string>
     <string name="search_bar">Search</string>
@@ -21,6 +21,8 @@
     <string name="calendar_dismiss">DISMISS</string>
     <string name="change_title_textfield_text">Insert new Title</string>
     <string name="save_button_info">Changes Saved</string>
+    <string name="duration_change_placeholder">Insert duration in minutes</string>
+    <string name="parts_change_placeholder">Insert new episodes count</string>
     <string-array name="isWatched">
         <item>ALL</item>
         <item>WATCHED</item>

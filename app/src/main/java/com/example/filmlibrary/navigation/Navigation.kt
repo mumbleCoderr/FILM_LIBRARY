@@ -23,16 +23,16 @@ fun Navigation() {
             HomeScreen(navController)
         }
         composable(
-            route = Screen.ProductionDetailsScreen.route + "/{productionId}",
+            route = Screen.ProductionDetailsScreen.route + "?productionId={productionId}",
             arguments = listOf(
                 navArgument("productionId") {
                     type = NavType.StringType
-                    defaultValue = "productionId"
-                    nullable = false
+                    defaultValue = null
+                    nullable = true
                 }
             )
         ) { entry ->
-            ProductionDetailsScreen(productionId = entry.arguments?.getString("productionId")!!)
+            ProductionDetailsScreen(productionId = entry.arguments?.getString("productionId"))
         }
         composable(
             route = Screen.AddProductionScreen.route,

@@ -119,7 +119,7 @@ fun ProductionDetailsScreen(productionId: String?) {
         mutableStateOf(production.isWatched)
     }
     var imageUri by remember {
-        mutableStateOf(production.imageUri?.let { Uri.parse(it) })
+        mutableStateOf(production.imageUri.let { Uri.parse(it) })
     }
     var title by remember {
         mutableStateOf(production.title)
@@ -215,7 +215,7 @@ fun ProductionDetailsScreen(productionId: String?) {
                         image = imageUri,
                         onImageSelected = { newUri ->
                             imageUri = newUri
-                            production.imageUri = newUri?.toString()
+                            production.imageUri = newUri.toString()
                         },
                         scope = scope,
                         hostState = hostState,
@@ -522,8 +522,8 @@ fun ImageSection(
     onReleaseDateChange: (LocalDate) -> Unit,
     openDurationOrPartsChangeSection: Boolean,
     onOpenDurationOrPartsChangeSection: (Boolean) -> Unit,
-    image: Uri?,
-    onImageSelected: (Uri?) -> Unit,
+    image: Uri,
+    onImageSelected: (Uri) -> Unit,
     scope: CoroutineScope,
     hostState: SnackbarHostState,
     scopeMessage: String,
@@ -554,7 +554,7 @@ fun ImageSection(
                 onReleaseDateChange(newReleaseDate)
             }
         )
-        if (production.imageUri != null) {
+        if (production.imageUri.isNotBlank()) {
             AsyncImage(
                 model = image,
                 contentDescription = production.title,

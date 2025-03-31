@@ -17,13 +17,14 @@ import java.util.UUID
 enum class Genre {
     ALL, DRAMA, COMEDY, ACTION, THRILLER, HORROR, DOCUMENTARY, ROMANCE, FANTASY,
 }
-enum class ProductionType(var durationOrParts: Int){
-    MOVIE(0), SERIES(0);
+sealed class ProductionType(val durationOrParts: Int): Serializable {
+    data class Movie(val duration: Int) : ProductionType(duration)
+    data class Series(val parts: Int) : ProductionType(parts)
 
-    fun withDurationOrParts(value: Int): ProductionType {
+    fun withDurationOrParts(newValue: Int): ProductionType {
         return when (this) {
-            MOVIE -> MOVIE.apply { durationOrParts = value }
-            SERIES -> SERIES.apply { durationOrParts = value }
+            is Movie -> Movie(newValue)
+            is Series -> Series(newValue)
         }
     }
 }
@@ -38,7 +39,7 @@ data class Production(
     var comment: String = "Leave a comment",
     var rate: Int = 0,
     var imageByteArray: ByteArray = byteArrayOf(),
-    var productionType: ProductionType = ProductionType.MOVIE,
+    var productionType: ProductionType = ProductionType.Movie(0),
 ): Serializable{
     override fun toString(): String {
         return """

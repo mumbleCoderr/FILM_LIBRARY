@@ -239,8 +239,15 @@ fun ProductionDetailsScreen(productionId: String?) {
                     TitleChangeSection(
                         title = title,
                         onTitleChange = { newTitle ->
-                            title = newTitle.trim()
+                            title = newTitle
                             production.title = newTitle.trim()
+                            if (title.isBlank()){
+                                scope.launch {
+                                    hostState.showSnackbar(
+                                        message = "Title can not be empty",
+                                    )
+                                }
+                            }
                         },
                         watchedStatus = watchedStatus,
                         openTitleChangeSection = openTitleChangeSection,
@@ -256,7 +263,7 @@ fun ProductionDetailsScreen(productionId: String?) {
                         onDurationOrPartsChange = { newDurationOrParts ->
                             val validatedNewDurationOrParts = newDurationOrParts.toIntOrNull() ?: 0
                             durationOrParts = validatedNewDurationOrParts
-                            production.productionType.withDurationOrParts(
+                            production.productionType = production.productionType.withDurationOrParts(
                                 validatedNewDurationOrParts
                             )
                         },
@@ -308,6 +315,10 @@ fun ProductionDetailsScreen(productionId: String?) {
             }
         }
         SaveButtonSection(
+            watchedStatus = watchedStatus,
+            genre = genre,
+            rate = rating,
+            title = title,
             onClick = {
                 if(production !in productions) productions.add(production)
                 saveProductions(context, productions)
@@ -426,7 +437,7 @@ fun DurationOrPartsChangeSection(
                 value = durationOrParts.takeIf { it > 0 }?.toString() ?: "",
                 placeholder = {
                     Text(
-                        text = if (productionType == ProductionType.MOVIE) {
+                        text = if (productionType is ProductionType.Movie) {
                             stringResource(id = R.string.duration_change_placeholder)
                         } else {
                             stringResource(id = R.string.parts_change_placeholder)
@@ -485,7 +496,7 @@ fun TitleChangeSection(
                 .padding(16.dp)
         ) {
             TextField(
-                value = title,
+                value = title ,
                 onValueChange = onTitleChange,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = DarkGray,
@@ -710,10 +721,10 @@ fun ImageSection(
                             }
                     )
                     Text(
-                        text = if (productionType == ProductionType.MOVIE) {
-                            "${durationOrParts / 60}h ${durationOrParts % 60}min"
+                        text = if (productionType is ProductionType.Movie) {
+                            "${production.productionType.durationOrParts / 60}h ${production.productionType.durationOrParts % 60}min"
                         } else {
-                            "$durationOrParts episodes"
+                            "${production.productionType.durationOrParts} episodes"
                         },
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
@@ -969,6 +980,10 @@ fun WatchedStatusSection(
 
 @Composable
 fun SaveButtonSection(
+    watchedStatus: Boolean,
+    title: String,
+    rate: Int,
+    genre: Genre,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -986,13 +1001,13 @@ fun SaveButtonSection(
         Button(
             onClick = { onClick() },
             shape = RoundedCornerShape(22.dp),
-            enabled = true,
+            enabled = if(title.isBlank() || (rate == 0 && watchedStatus) || genre.name == "ALL") false else true,
             contentPadding = PaddingValues(12.dp),
             colors = ButtonColors(
                 contentColor = TextH1,
                 containerColor = DarkPurple,
                 disabledContentColor = TextH2,
-                disabledContainerColor = LightPurple,
+                disabledContainerColor = DarkGray,
             ),
             modifier = Modifier
                 .fillMaxWidth()

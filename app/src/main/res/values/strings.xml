@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">FILM LIBRARY</string>
     <string name="title1">Welcome in Film Library</string>
-    <string name="title2">track your premiers and save your feelings</string>
+    <string name="title2">track your premiers</string>
     <string name="list">Found: </string>
     <string name="production_null">UNKNOWN</string>
     <string name="search_bar">Search</string>

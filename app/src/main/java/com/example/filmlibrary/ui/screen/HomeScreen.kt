@@ -51,6 +51,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -127,10 +128,6 @@ fun HomeScreen(navController: NavController) {
         selectedSorting,
     )
 
-    var filteredProductionsCounter by remember {
-        mutableStateOf(finalFilteredSortedProductions.size)
-    }
-
     Column(
         modifier = Modifier
             .background(DarkPurple)
@@ -189,30 +186,39 @@ fun HomeScreen(navController: NavController) {
 
 @Composable
 fun TopBar() {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
                 start = 16.dp,
                 top = 52.dp,
+                end = 16.dp
             ),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = stringResource(id = R.string.title1),
-            color = TextH1,
-            fontSize = 26.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .padding(bottom = 8.dp)
+        Column {
+            Text(
+                text = stringResource(id = R.string.title1),
+                color = TextH1,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier
+                    .padding(bottom = 8.dp)
 
+            )
+            Text(
+                text = stringResource(id = R.string.title2),
+                color = TextH2,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        Image(
+            painter = painterResource(id = R.drawable.film_library_logo),
+            contentDescription = "logo",
+            modifier = Modifier.size(80.dp)
         )
-        Text(
-            text = stringResource(id = R.string.title2),
-            color = TextH2,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-        )
-
     }
 }
 

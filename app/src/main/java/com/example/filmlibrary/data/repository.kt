@@ -17,6 +17,7 @@ import java.util.UUID
 enum class Genre {
     ALL, DRAMA, COMEDY, ACTION, THRILLER, HORROR, DOCUMENTARY, ROMANCE, FANTASY,
 }
+
 sealed class ProductionType(val durationOrParts: Int): Serializable {
     data class Movie(val duration: Int) : ProductionType(duration)
     data class Series(val parts: Int) : ProductionType(parts)
@@ -29,7 +30,6 @@ sealed class ProductionType(val durationOrParts: Int): Serializable {
     }
 }
 
-
 data class Production(
     val id: UUID = UUID.randomUUID(),
     var title: String = "Add title",
@@ -40,7 +40,7 @@ data class Production(
     var rate: Int = 0,
     var imageByteArray: ByteArray = byteArrayOf(),
     var productionType: ProductionType = ProductionType.Movie(0),
-): Serializable{
+): Serializable {
     override fun toString(): String {
         return """
                         Production: ${this.javaClass.simpleName}

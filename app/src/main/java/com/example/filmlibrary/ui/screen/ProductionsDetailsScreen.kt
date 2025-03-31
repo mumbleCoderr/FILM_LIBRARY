@@ -147,6 +147,9 @@ fun ProductionDetailsScreen(productionId: String?) {
     var openTitleChangeSection by remember {
         mutableStateOf(false)
     }
+    var openProductionTypeChangeSection by remember {
+        mutableStateOf(false)
+    }
     var productionType by remember {
         mutableStateOf(production.productionType)
     }
@@ -203,6 +206,10 @@ fun ProductionDetailsScreen(productionId: String?) {
                     ImageSection(
                         context = context,
                         production = production,
+                        openProductionTypeChangeSection = openProductionTypeChangeSection,
+                        onOpenProductionTypeChangeSectionChange = { newOpenProductionTypeChangeSection ->
+                            openProductionTypeChangeSection = newOpenProductionTypeChangeSection
+                        },
                         productionType = productionType,
                         watchedStatus = watchedStatus,
                         title = title,
@@ -235,12 +242,34 @@ fun ProductionDetailsScreen(productionId: String?) {
                     )
                 }
                 item {
+                    ProductionTypeChangeSection(
+                        watchedStatus = watchedStatus,
+                        productionType = productionType,
+                        openProductionTypeChangeSection = openProductionTypeChangeSection,
+                        onProductionTypeChange = { newProductionType ->
+                            when (newProductionType) {
+                                "Movie" -> {
+                                    productionType = ProductionType.Movie(durationOrParts)
+                                    production.productionType =
+                                        ProductionType.Movie(durationOrParts)
+                                }
+
+                                "Series" -> {
+                                    productionType = ProductionType.Series(durationOrParts)
+                                    production.productionType =
+                                        ProductionType.Series(durationOrParts)
+                                }
+                            }
+                        }
+                    )
+                }
+                item {
                     TitleChangeSection(
                         title = title,
                         onTitleChange = { newTitle ->
                             title = newTitle
                             production.title = newTitle.trim()
-                            if (title.isBlank()){
+                            if (title.isBlank()) {
                                 scope.launch {
                                     hostState.showSnackbar(
                                         message = "Title can not be empty",
@@ -262,9 +291,10 @@ fun ProductionDetailsScreen(productionId: String?) {
                         onDurationOrPartsChange = { newDurationOrParts ->
                             val validatedNewDurationOrParts = newDurationOrParts.toIntOrNull() ?: 0
                             durationOrParts = validatedNewDurationOrParts
-                            production.productionType = production.productionType.withDurationOrParts(
-                                validatedNewDurationOrParts
-                            )
+                            production.productionType =
+                                production.productionType.withDurationOrParts(
+                                    validatedNewDurationOrParts
+                                )
                         },
                         keyboardController = keyboardController!!,
                     )
@@ -319,7 +349,7 @@ fun ProductionDetailsScreen(productionId: String?) {
             rate = rating,
             title = title,
             onClick = {
-                if(production !in productions) productions.add(production)
+                if (production !in productions) productions.add(production)
                 saveProductions(context, productions)
                 scope.launch {
                     hostState.showSnackbar(
@@ -467,9 +497,9 @@ fun DurationOrPartsChangeSection(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(22.dp)),
-                        keyboardOptions = KeyboardOptions.Default.copy(
-                        imeAction = ImeAction.Done
-                        ),
+                keyboardOptions = KeyboardOptions.Default.copy(
+                    imeAction = ImeAction.Done
+                ),
                 keyboardActions = KeyboardActions(
                     onDone = {
                         keyboardController.hide()
@@ -495,7 +525,7 @@ fun TitleChangeSection(
                 .padding(16.dp)
         ) {
             TextField(
-                value = title ,
+                value = title,
                 onValueChange = onTitleChange,
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = DarkGray,
@@ -530,11 +560,74 @@ fun TitleChangeSection(
     }
 }
 
+@Composable
+fun ProductionTypeChangeSection(
+    watchedStatus: Boolean,
+    openProductionTypeChangeSection: Boolean,
+    productionType: ProductionType,
+    onProductionTypeChange: (String) -> Unit,
+) {
+    if (openProductionTypeChangeSection && !watchedStatus) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = 16.dp,
+                ),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            listOf("Movie", "Series").forEach { type ->
+                ProductionTypeChip(
+                    productionTypeName = type,
+                    actualProductionType = productionType,
+                    onProductionTypeChange = onProductionTypeChange
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ProductionTypeChip(
+    productionTypeName: String,
+    actualProductionType: ProductionType,
+    onProductionTypeChange: (String) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .height(60.dp)
+            .width(200.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                if (productionTypeName == actualProductionType.javaClass.simpleName) DarkPurple
+                else DarkGray
+            )
+            .clickable {
+                onProductionTypeChange(productionTypeName)
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = productionTypeName.uppercase(),
+            color = TextH1,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier
+                .padding(8.dp)
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImageSection(
     context: Context,
     production: Production,
+    openProductionTypeChangeSection: Boolean,
+    onOpenProductionTypeChangeSectionChange: (Boolean) -> Unit,
     productionType: ProductionType,
     watchedStatus: Boolean,
     title: String,
@@ -557,9 +650,10 @@ fun ImageSection(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri ->
             if (uri != null) {
-                val imageByteArray = context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    inputStream.readBytes()
-                }
+                val imageByteArray =
+                    context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                        inputStream.readBytes()
+                    }
                 if (imageByteArray != null) {
                     onImageSelected(imageByteArray)
                 }
@@ -663,6 +757,23 @@ fun ImageSection(
                 horizontalAlignment = Alignment.Start
             ) {
                 Text(
+                    text = productionType.javaClass.simpleName,
+                    color = TextH2,
+                    fontSize = 16.sp,
+                    modifier = Modifier
+                        .clickable {
+                            if (watchedStatus) {
+                                scope.launch {
+                                    hostState.showSnackbar(
+                                        message = scopeMessage,
+                                    )
+                                }
+                            }else{
+                                onOpenProductionTypeChangeSectionChange(!openProductionTypeChangeSection)
+                            }
+                        }
+                )
+                Text(
                     text = title.uppercase(),
                     color = TextH1,
                     fontSize = 32.sp,
@@ -671,7 +782,15 @@ fun ImageSection(
                     modifier = Modifier
                         .fillMaxWidth(0.65f)
                         .clickable {
-                            onOpenTitleChangeSectionChange(!openTitleChangeSection)
+                            if (watchedStatus) {
+                                scope.launch {
+                                    hostState.showSnackbar(
+                                        message = scopeMessage,
+                                    )
+                                }
+                            } else {
+                                onOpenTitleChangeSectionChange(!openTitleChangeSection)
+                            }
                         }
                 )
                 Row(
@@ -999,7 +1118,7 @@ fun SaveButtonSection(
         Button(
             onClick = { onClick() },
             shape = RoundedCornerShape(22.dp),
-            enabled = if(title.isBlank() || (rate == 0 && watchedStatus) || genre.name == "ALL") false else true,
+            enabled = if (title.isBlank() || (rate == 0 && watchedStatus) || genre.name == "ALL") false else true,
             contentPadding = PaddingValues(12.dp),
             colors = ButtonColors(
                 contentColor = TextH1,

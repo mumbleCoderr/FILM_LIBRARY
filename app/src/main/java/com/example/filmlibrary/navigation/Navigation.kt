@@ -6,7 +6,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.filmlibrary.ui.screen.AddProductionScreen
 import com.example.filmlibrary.ui.screen.HomeScreen
 import com.example.filmlibrary.ui.screen.ProductionDetailsScreen
 
@@ -33,11 +32,6 @@ fun Navigation() {
             )
         ) { entry ->
             ProductionDetailsScreen(productionId = entry.arguments?.getString("productionId"))
-        }
-        composable(
-            route = Screen.AddProductionScreen.route,
-        ) {
-            AddProductionScreen()
         }
     }
 }

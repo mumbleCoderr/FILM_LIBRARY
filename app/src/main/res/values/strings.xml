@@ -2,7 +2,7 @@
     <string name="app_name">FILM LIBRARY</string>
     <string name="title1">Welcome in Film Library</string>
     <string name="title2">track your premiers and save your feelings</string>
-    <string name="list">Your repository</string>
+    <string name="list">Found: </string>
     <string name="production_null">UNKNOWN</string>
     <string name="search_bar">Search</string>
     <string name="title_production_details_1">Production details</string>
@@ -23,6 +23,10 @@
     <string name="save_button_info">Changes Saved</string>
     <string name="duration_change_placeholder">Insert duration in minutes</string>
     <string name="parts_change_placeholder">Insert new episodes count</string>
+    <string name="delete_dialog_1">DELETE PRODUCTION</string>
+    <string name="delete_dialog_2">Are you sure about deleting: </string>
+    <string name="delete_dialog_button_1">DELETE</string>
+    <string name="delete_dialog_button_2">DISMISS</string>
     <string-array name="isWatched">
         <item>ALL</item>
         <item>WATCHED</item>

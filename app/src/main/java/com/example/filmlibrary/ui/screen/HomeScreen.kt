@@ -1,10 +1,12 @@
 package com.example.filmlibrary.ui.screen
 
 import android.net.Uri
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,9 +24,12 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.Icon
@@ -44,9 +49,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -58,6 +66,7 @@ import com.example.filmlibrary.data.Production
 import com.example.filmlibrary.data.ProductionType
 import com.example.filmlibrary.data.loadProductions
 import com.example.filmlibrary.data.saveProductions
+import com.example.filmlibrary.ui.theme.DarkGray
 import com.example.filmlibrary.ui.theme.DarkPink
 import com.example.filmlibrary.ui.theme.DarkPurple
 import com.example.filmlibrary.ui.theme.LightPurple
@@ -75,9 +84,12 @@ import java.time.LocalDate
 @Composable
 fun HomeScreen(navController: NavController) {
     val context = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
-    val productions by remember {
-        mutableStateOf(loadProductions(context) ?: emptyList())
+    var productions by remember {
+        mutableStateOf(mutableListOf<Production>().apply {
+            addAll(loadProductions(context) ?: emptyList())
+        })
     }
 
     val genres = Genre.entries
@@ -101,7 +113,7 @@ fun HomeScreen(navController: NavController) {
         productions,
         input,
     )
-    val productionsFilteredByGenre: List<Production> = filterProductionsByGenre(
+    val productionsFilteredByGenre = filterProductionsByGenre(
         productions,
         genres,
         selectedGenreFilter,
@@ -114,6 +126,10 @@ fun HomeScreen(navController: NavController) {
         productionsFilteredByGenreAndWatchedStatus,
         selectedSorting,
     )
+
+    var filteredProductionsCounter by remember {
+        mutableStateOf(finalFilteredSortedProductions.size)
+    }
 
     Column(
         modifier = Modifier
@@ -131,17 +147,42 @@ fun HomeScreen(navController: NavController) {
                 )
         ) {
             TopBar()
-                SearchBar(input, onInputChange = { input = it })
-                FilterChips(
-                    genres,
-                    watchedStatusEntries,
-                    sortingEntries,
-                    selectedGenreFilter,
-                    selectedWatchedStatusFilter,
-                    selectedSorting
+            SearchBar(
+                input,
+                onInputChange = { input = it },
+                keyboardController = keyboardController!!,
+            )
+            FilterChips(
+                genres,
+                watchedStatusEntries,
+                sortingEntries,
+                selectedGenreFilter,
+                selectedWatchedStatusFilter,
+                selectedSorting
+            )
+            if (input.isNotBlank()) {
+                ProductionList(
+                    productions = filteredProductionsByTitle,
+                    navController = navController,
+                    onDelete = { selectedProduction ->
+                        productions = productions.toMutableList().apply {
+                            remove(selectedProduction)
+                        }
+                        saveProductions(context, productions)
+                    }
                 )
-            if (input.isNotBlank()) ProductionList(filteredProductionsByTitle, navController)
-            else ProductionList(finalFilteredSortedProductions, navController)
+            } else {
+                ProductionList(
+                    productions = finalFilteredSortedProductions,
+                    navController = navController,
+                    onDelete = { selectedProduction ->
+                        productions = productions.toMutableList().apply {
+                            remove(selectedProduction)
+                        }
+                        saveProductions(context, productions)
+                    }
+                )
+            }
         }
     }
 }
@@ -258,6 +299,7 @@ fun FilterChips(
 fun SearchBar(
     input: String,
     onInputChange: (String) -> Unit,
+    keyboardController: SoftwareKeyboardController
 ) {
     Box(
         modifier = Modifier
@@ -269,7 +311,7 @@ fun SearchBar(
             .clip(RoundedCornerShape(22.dp))
             .background(TextH2),
     ) {
-        if(input.isEmpty()){
+        if (input.isEmpty()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth(),
@@ -308,14 +350,24 @@ fun SearchBar(
                     top = 3.dp,
                 )
                 .height(30.dp),
+            keyboardOptions = KeyboardOptions.Default.copy(
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    keyboardController.hide()
+                }
+            )
         )
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProductionItem(
     production: Production? = null,
     navController: NavController,
+    onLongPress: (Production) -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -341,9 +393,10 @@ fun ProductionItem(
                             startY = 0f
                         )
                     )
-                    .clickable {
-                        navController.navigate(Screen.ProductionDetailsScreen.route + "?productionId=${production.id}")
-                    }
+                    .combinedClickable(
+                        onClick = { navController.navigate(Screen.ProductionDetailsScreen.route + "?productionId=${production.id}") },
+                        onLongClick = { onLongPress(production) }
+                    )
             )
             Text(
                 text = production.title.uppercase(),
@@ -388,16 +441,26 @@ fun ProductionItem(
 fun ProductionList(
     productions: List<Production>,
     navController: NavController,
+    onDelete: (Production?) -> Unit,
 ) {
+    var showDialog by remember {
+        mutableStateOf(false)
+    }
+    var selectedProduction by remember {
+        mutableStateOf<Production?>(null)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
     ) {
         Text(
-            text = stringResource(id = R.string.list),
+            text = stringResource(id = R.string.list) + if (productions.size == 1)
+                " ${productions.size} production"
+            else " ${productions.size} productions",
             color = TextH1,
-            fontSize = 38.sp,
+            fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
                 .padding(bottom = 16.dp)
@@ -414,17 +477,71 @@ fun ProductionList(
         ) {
             items(productions.size) {
                 ProductionItem(
-                    productions[it],
-                    navController,
+                    production = productions[it],
+                    navController = navController,
+                    onLongPress = { production ->
+                        selectedProduction = production
+                        showDialog = true
+                    }
                 )
             }
             item {
                 ProductionItem(
-                    null,
-                    navController,
+                    production = null,
+                    navController = navController,
+                    onLongPress = {}
                 )
             }
         }
+    }
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            confirmButton = {
+                Button(
+                    colors = ButtonColors(
+                        containerColor = DarkPurple,
+                        contentColor = TextH1,
+                        disabledContainerColor = LightPurple,
+                        disabledContentColor = TextH2,
+                    ),
+                    onClick = {
+                        onDelete(selectedProduction)
+                        showDialog = false
+                    }
+                ) {
+                    Text(text = stringResource(id = R.string.delete_dialog_button_1))
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showDialog = false },
+                    colors = ButtonColors(
+                        containerColor = DarkPurple,
+                        contentColor = TextH1,
+                        disabledContainerColor = LightPurple,
+                        disabledContentColor = TextH2,
+                    ),
+                ) {
+                    Text(text = stringResource(id = R.string.delete_dialog_button_2))
+                }
+            },
+            title = {
+                Text(
+                    text = stringResource(id = R.string.delete_dialog_1),
+                    color = TextH1,
+                    fontWeight = FontWeight.Bold,
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(id = R.string.delete_dialog_2) + "\n${selectedProduction?.title}?",
+                    color = TextH2,
+                    fontSize = 16.sp
+                )
+            },
+            containerColor = DarkGray,
+        )
     }
 }
 

@@ -5,6 +5,7 @@ It allows you to manage your personal collection of movies and TV series –
 you can add productions, edit details, delete entries, and, if you've watched a title, leave a review and rate it.
 
 🎬 Features
+
 ✅ Add movies and TV series to your collection
 ✅ Edit production details (title, genre, release date, description, poster, etc.)
 ✅ Filter and sort productions by genre, watch status, and other criteria
@@ -13,6 +14,7 @@ you can add productions, edit details, delete entries, and, if you've watched a 
 ✅ Search for movies and TV series by title
 
 🛠️ Technologies
+
 The app is built using:
 
 Kotlin – programming language

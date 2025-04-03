@@ -214,11 +214,6 @@ fun TopBar() {
                 fontWeight = FontWeight.Bold,
             )
         }
-        Image(
-            painter = painterResource(id = R.drawable.film_library_logo),
-            contentDescription = "logo",
-            modifier = Modifier.size(80.dp)
-        )
     }
 }
 

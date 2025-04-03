@@ -20,6 +20,9 @@ Navigation Component – navigation management
 
 Material 3 – modern design
 
+▶️ YouTube link
+https://www.youtube.com/watch?v=CQT7N4gSDBg
+
 📸 Screenshots
 
 ![image](https://github.com/user-attachments/assets/458d2f1a-52ba-4c71-83d5-fced6273595f)

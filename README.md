@@ -16,16 +16,13 @@ you can add productions, edit details, delete entries, and, if you've watched a 
 🛠️ Technologies
 
 The app is built using:
-
 Kotlin – programming language
-
 Jetpack Compose – modern UI framework
-
 Navigation Component – navigation management
-
 Material 3 – modern design
 
 ▶️ YouTube link
+
 https://www.youtube.com/watch?v=CQT7N4gSDBg
 
 📸 Screenshots

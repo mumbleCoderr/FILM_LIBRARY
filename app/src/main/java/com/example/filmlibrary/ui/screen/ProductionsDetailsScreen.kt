@@ -227,6 +227,7 @@ fun ProductionDetailsScreen(productionId: String?) {
                         onOpenGenreChooseChange = { newOpenGenreChoose ->
                             openChooseGenre = newOpenGenreChoose
                         },
+                        durationOrParts = durationOrParts,
                         openDurationOrPartsChangeSection = openDurationOrPartsChangeSection,
                         onOpenDurationOrPartsChangeSection = { newOpenDurationOrPartsChangeSection ->
                             openDurationOrPartsChangeSection = newOpenDurationOrPartsChangeSection
@@ -638,6 +639,7 @@ fun ImageSection(
     onOpenGenreChooseChange: (Boolean) -> Unit,
     releaseDate: LocalDate,
     onReleaseDateChange: (LocalDate) -> Unit,
+    durationOrParts: Int,
     openDurationOrPartsChangeSection: Boolean,
     onOpenDurationOrPartsChangeSection: (Boolean) -> Unit,
     image: ByteArray,
@@ -839,9 +841,9 @@ fun ImageSection(
                     )
                     Text(
                         text = if (productionType is ProductionType.Movie) {
-                            "${production.productionType.durationOrParts / 60}h ${production.productionType.durationOrParts % 60}min"
+                            "${durationOrParts / 60}h ${durationOrParts % 60}min"
                         } else {
-                            "${production.productionType.durationOrParts} episodes"
+                            "${durationOrParts} episodes"
                         },
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,

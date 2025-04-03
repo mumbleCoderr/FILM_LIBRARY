@@ -1,5 +1,8 @@
 📽️ Film Library
-📱 Film Library is a mobile application written in Kotlin using Jetpack Compose. It allows you to manage your personal collection of movies and TV series – you can add productions, edit details, delete entries, and, if you've watched a title, leave a review and rate it.
+
+📱 Film Library is a mobile application written in Kotlin using Jetpack Compose. 
+It allows you to manage your personal collection of movies and TV series – 
+you can add productions, edit details, delete entries, and, if you've watched a title, leave a review and rate it.
 
 🎬 Features
 ✅ Add movies and TV series to your collection

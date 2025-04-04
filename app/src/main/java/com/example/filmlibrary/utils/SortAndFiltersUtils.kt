@@ -9,7 +9,7 @@ fun filterProductionsByTitle(
     input: String,
 ): List<Production>{
     return productions.filter {
-        it.title.contains(input, ignoreCase = true)
+        it.title.contains(input.trim(), ignoreCase = true)
     }
 }
 

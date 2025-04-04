@@ -7,10 +7,15 @@ you can add productions, edit details, delete entries, and, if you've watched a 
 🎬 Features
 
 ✅ Add movies and TV series to your collection
+
 ✅ Edit production details (title, genre, release date, description, poster, etc.)
+
 ✅ Filter and sort productions by genre, watch status, and other criteria
+
 ✅ Mark productions as watched – leave a review and rate them
+
 ✅ Delete productions from your list
+
 ✅ Search for movies and TV series by title
 
 🛠️ Technologies
